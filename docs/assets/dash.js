@@ -309,9 +309,6 @@ function setMonth(key) {
   const btn = document.getElementById('btn-' + key);
   if (btn) btn.classList.add('active');
 
-  document.getElementById('period-meta').textContent =
-    m.label + (prev ? ' · compared with ' + prev.label : ' · no prior month on record');
-
   renderSummary(m);
   renderBusiness(m, prev);
   renderPaid(m, prev);
