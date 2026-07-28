@@ -33,7 +33,7 @@
     { "slug": "stepzgym",         "client": "Stepz Fitness",                "seo": true  },
     { "slug": "summitchiro",      "client": "Summit Chiro",                 "seo": true  },
     { "slug": "sunrisesurveying", "client": "Sunrise Surveying",            "seo": true  },
-    { "slug": "sunshineosteo",    "client": "Sunshine Osteo",               "seo": false },
+    { "slug": "sunshineosteo",    "client": "Sunshine Health Osteopathy",   "seo": true  },
     { "slug": "tyco",             "client": "Tyco Creative",                "seo": true  },
     { "slug": "vikasati",         "client": "Vikasati",                     "seo": true  },
     { "slug": "villageremedies",  "client": "Village Remedies",             "seo": true  },
