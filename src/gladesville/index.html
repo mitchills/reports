@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Performance Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/dash.css">
+</head>
+<body>
+<div class="wrap">
+
+  <h1 id="client-name">Loading…</h1>
+  <p class="subtitle">Performance Dashboard</p>
+
+  <div class="toggle" id="month-toggle"></div>
+  <p class="period-meta" id="period-meta"></p>
+
+  <div id="summary"></div>
+
+  <div id="highlights-section">
+    <div class="section-label">Highlights</div>
+    <div class="panel"><div id="highlights"></div></div>
+  </div>
+
+  <div id="business-section">
+    <div class="section-label">Business Results</div>
+    <div class="panel"><div id="business"></div></div>
+  </div>
+
+  <div class="section-label">Paid Advertising</div>
+  <div class="panel"><div id="paid"></div></div>
+
+  <div class="section-label">SEO</div>
+  <div class="panel"><div id="organic"></div></div>
+
+  <div class="section-label">Website</div>
+
+  <div class="sub-label">Traffic</div>
+  <div class="panel"><div id="site-traffic"></div></div>
+
+  <div id="site-conv-block">
+    <div class="sub-label">Conversions</div>
+    <div class="panel"><div id="site-conversions"></div></div>
+  </div>
+
+  <div id="site-pages-block">
+    <div class="sub-label">Top Pages</div>
+    <div class="panel"><div id="site-pages"></div></div>
+  </div>
+
+  <div class="section-label">Keyword Rankings</div>
+  <div class="panel"><div id="rankings"></div></div>
+
+  <div class="section-label">Work Completed</div>
+  <div class="panel"><div id="completed"></div></div>
+
+  <p class="foot" id="foot"></p>
+
+</div>
+<script src="../assets/dash.js"></script>
+</body>
+</html>
