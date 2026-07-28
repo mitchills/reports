@@ -4,3 +4,4 @@ build/
 src/*/data.json
 decrypted/
 node_modules/
+passwords.json

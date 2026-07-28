@@ -44,9 +44,35 @@ TEMPLATE = Path(__file__).parent / "template.html"
 CONFIG   = ".staticrypt.json"
 
 
+OVERRIDES_FILE = ROOT / "passwords.json"
+
+
+def load_overrides() -> dict:
+    """Memorable per-client passwords, e.g. {"gladesville": "gladesville"}.
+    Gitignored. Anything listed here wins over the HMAC-derived password, and
+    survives `make encrypt` — otherwise a custom password gets silently
+    clobbered the next time everything is re-encrypted."""
+    if not OVERRIDES_FILE.exists():
+        return {}
+    try:
+        import json
+        return json.loads(OVERRIDES_FILE.read_text())
+    except Exception as e:
+        print(f"WARNING: could not read passwords.json ({e}) — using derived passwords.",
+              file=sys.stderr)
+        return {}
+
+
 def derive_password(secret: str, client: str) -> str:
     digest = hmac.new(secret.encode(), client.encode(), hashlib.sha256).digest()
     return base64.urlsafe_b64encode(digest)[:24].decode("ascii")
+
+
+def password_for(secret: str, client: str, overrides: dict) -> tuple:
+    """Returns (password, is_custom)."""
+    if client in overrides and overrides[client]:
+        return str(overrides[client]), True
+    return derive_password(secret, client), False
 
 
 def encrypt(src: Path, out_dir: Path, password: str) -> bool:
@@ -63,14 +89,16 @@ def encrypt(src: Path, out_dir: Path, password: str) -> bool:
     return True
 
 
-def table(passwords, results=None):
+def table(passwords, custom=None, results=None):
+    custom = custom or {}
     print()
-    print(f"  {'Client':<24} {'Password':<26} URL")
-    print(f"  {'-'*24} {'-'*26} {'-'*44}")
+    print(f"  {'Client':<24} {'Password':<26} {'Type':<9} URL")
+    print(f"  {'-'*24} {'-'*26} {'-'*9} {'-'*44}")
     for name, pwd in passwords.items():
         status = f"  [{results[name]}]" if results else ""
+        kind = "custom" if custom.get(name) else "derived"
         url = f"hub.masteredmarketing.com/reports/{name}/"
-        print(f"  {name:<24} {pwd:<26} {url}{status}")
+        print(f"  {name:<24} {pwd:<26} {kind:<9} {url}{status}")
     print()
 
 
@@ -103,11 +131,14 @@ def main():
         print("Nothing to encrypt.")
         sys.exit(0)
 
-    passwords = {n: derive_password(secret, n) for n in names}
+    overrides = load_overrides()
+    resolved  = {n: password_for(secret, n, overrides) for n in names}
+    passwords = {n: p for n, (p, _) in resolved.items()}
+    custom    = {n: c for n, (_, c) in resolved.items()}
 
     if args.show:
-        print("\nClient dashboard passwords (derived from ENCRYPT_SECRET):")
-        table(passwords)
+        print("\nClient dashboard passwords:")
+        table(passwords, custom)
         return
 
     print(f"\nEncrypting {len(names)} dashboard(s): build/ -> docs/\n")
@@ -119,7 +150,7 @@ def main():
         print(results[n])
 
     print("\nShare each password only with that client:")
-    table(passwords, results)
+    table(passwords, custom, results)
 
     if any(v != "OK" for v in results.values()):
         sys.exit(1)
