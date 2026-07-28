@@ -16,6 +16,7 @@ Usage:
 """
 
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -24,7 +25,9 @@ ROOT  = Path(__file__).resolve().parent.parent
 SRC   = ROOT / "src"
 BUILD = ROOT / "build"
 
-MARKER = '<script src="../assets/dash.js"></script>'
+# Matches the dash.js tag with or without a ?v= cache-buster, so bumping the
+# version in the shell can't silently break every build.
+MARKER_RE = re.compile(r'<script src="\.\./assets/dash\.js(?:\?[^"]*)?"></script>')
 
 
 def build_client(client_dir: Path) -> bool:
@@ -46,14 +49,15 @@ def build_client(client_dir: Path) -> bool:
         return False
 
     html = html_path.read_text(encoding="utf-8")
-    if MARKER not in html:
+    marker = MARKER_RE.search(html)
+    if not marker:
         print(f"  {name:<20} FAIL  (could not find the dash.js script tag to inline before)")
         return False
 
     # </script> inside a string would close the tag early — escape it
     payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
-    inline = f'<script>window.__DASH_DATA__ = {payload};</script>\n{MARKER}'
-    html = html.replace(MARKER, inline)
+    inline = f'<script>window.__DASH_DATA__ = {payload};</script>\n{marker.group(0)}'
+    html = html[:marker.start()] + inline + html[marker.end():]
 
     out_dir = BUILD / name
     out_dir.mkdir(parents=True, exist_ok=True)

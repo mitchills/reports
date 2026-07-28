@@ -339,6 +339,28 @@ async function init() {
     document.getElementById('client-name').textContent = DATA.client;
     document.title = DATA.client + ' — Performance Dashboard';
 
+    /* Scaffolded but not yet reported on. Show an honest holding state — an empty
+       shell of zeroed panels would claim a month of nothing happened. */
+    if (!DATA.months || !DATA.months.length) {
+      document.getElementById('dash-body').style.display = 'none';
+      const aw = document.getElementById('awaiting');
+      aw.style.display = '';
+      aw.innerHTML = '<div class="panel"><div class="empty">'
+        + 'Your dashboard is set up and ready. Your figures appear here after your '
+        + 'first monthly report.</div></div>';
+      document.getElementById('foot').textContent = '';
+      return;
+    }
+
+    /* SEO isn't on every client's plan. Hide the sections outright rather than
+       leave empty panels that read as a gap in the work. */
+    if (DATA.seo === false) {
+      ['seo-section', 'rankings-section'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+    }
+
     /* newest month first (far left) — months[] stays chronological so deltas
        keep comparing against the preceding month */
     document.getElementById('month-toggle').innerHTML =
@@ -346,8 +368,10 @@ async function init() {
         .map(m => `<button id="btn-${m.key}" onclick="setMonth('${m.key}')">${m.label}</button>`).join('');
 
     const d = new Date(DATA.updated_at);
-    document.getElementById('foot').textContent =
-      'Google Ads, Meta Ads, GA4, Search Console & SE Ranking · Updated ' +
+    const sources = DATA.seo === false
+      ? 'Google Ads, Meta Ads & GA4'
+      : 'Google Ads, Meta Ads, GA4, Search Console & SE Ranking';
+    document.getElementById('foot').textContent = sources + ' · Updated ' +
       d.toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' });
 
     setMonth(DATA.months[DATA.months.length - 1].key);

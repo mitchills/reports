@@ -6,14 +6,21 @@ Live at `https://hub.masteredmarketing.com/reports/[client]/`
 ## Structure
 
 ```
-src/[client]/index.html    page shell (committed)
+clients.json               the roster — name, slug, seo flag. Add a client here.
+src/[client]/index.html    page shell (generated — don't hand-edit, see below)
 src/[client]/data.json     the client's numbers — GITIGNORED, never pushed
 docs/assets/dash.css       shared styling — edit once, every client updates
 docs/assets/dash.js        shared render logic + keyword selection rules
 docs/[client]/index.html   ENCRYPTED build output — this is what Pages serves
+scripts/scaffold.py        creates/syncs a folder per client from clients.json
+scripts/templates/         the one true page shell
 scripts/build.py           inlines data.json into the HTML
 scripts/encrypt/           StatiCrypt encryption + the password-gate template
 ```
+
+**Don't hand-edit `src/[client]/index.html`.** Every client's shell is identical and
+regenerated from `scripts/templates/index.html` by `make scaffold` — an edit to one
+copy gets overwritten and the other 30 never get it. Change the template instead.
 
 **Why data.json is gitignored:** StatiCrypt encrypts an HTML file, but a `data.json`
 sitting beside it in a public repo stays plainly readable. `build.py` inlines the data
@@ -27,6 +34,7 @@ inside the encrypted blob. Never commit `src/*/data.json`.
 3. Commit + push. Pages redeploys in ~60 seconds.
 
 ```
+make scaffold       create/sync a folder for every client in clients.json
 make build          inline data only (no encryption)
 make encrypt        build + encrypt everything into docs/
 make encrypt-show   print the password table without re-encrypting
@@ -35,16 +43,35 @@ make preview        serve docs/ at localhost:8765
 
 ## Passwords
 
-Each client's password is derived: `HMAC-SHA256(ENCRYPT_SECRET, client-name)`, 24 chars.
-One master secret in `.env` (gitignored, never committed) generates a unique password per
-client, so sharing one client's password never exposes another. Passwords are deterministic
-— `make encrypt-show` regenerates them any time.
+**A client's password is their slug** — `gladesville` opens
+`hub.masteredmarketing.com/reports/gladesville/`. Chosen so an AM can share it on a call.
+`make encrypt-show` prints the table.
 
-**Store `ENCRYPT_SECRET` in your password manager.** Lose it and every password changes.
+⚠️ **This is a soft gate, not protection.** The slug is in the public URL and in this
+public repo's folder listing, so anyone who finds the repo can open any dashboard. It
+keeps the pages out of Google and off casual eyes; it does not keep one client out of
+another's numbers. For a client whose figures genuinely can't be seen by anyone else,
+add an unguessable password in `passwords.json` (gitignored) — overrides survive
+`make encrypt`.
 
 ## Adding a client
 
-Copy any `src/[client]/` folder, rename it, replace `data.json`, run `make encrypt`.
+Add one line to `clients.json`, then `make scaffold && make encrypt`, commit + push.
+The dashboard shows a holding message until that client's first report runs.
+
+```json
+{ "slug": "newclinic", "client": "New Clinic Physio", "seo": true }
+```
+
+`seo: false` hides the SEO + Keyword Rankings sections entirely for that client — set it
+from whether SEO is a service they pay for, not from whether the data happens to exist.
+
+## Changing the shared design
+
+`docs/assets/dash.css` and `dash.js` are loaded by every client page and cached hard by
+browsers. After changing either, **bump the `?v=` on both links in
+`scripts/templates/index.html`**, then `make scaffold && make encrypt`. Skip it and you'll
+be looking at the old design wondering why nothing changed.
 
 ## Data rules
 

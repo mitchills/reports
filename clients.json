@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "purpose": "Dashboard roster. `scripts/scaffold.py` reads this and creates src/<slug>/ for anything missing.",
+    "slug": "Also the URL AND the password (hub.masteredmarketing.com/reports/<slug>/). Keep it lowercase, no spaces, and don't rename one once a client has the link.",
+    "seo": "false hides the SEO + Keyword Rankings sections entirely for that client. Set from whether SEO is a paid service for them, NOT from whether the data happens to exist.",
+    "seo_source": "Seeded 28/07/2026 from whether the client has an SE Ranking project. That's a proxy, not proof of a paid SEO engagement — Mitch to confirm each one.",
+    "excluded": "James Curtain, Shane Hicks, Simon and Drew, Wakely — no GA4, no ads, no Search Console in the config, so no report could populate a dashboard. Add them here if that changes."
+  },
+  "clients": [
+    { "slug": "aplus",            "client": "A Plus Physio",                "seo": true  },
+    { "slug": "cleanfeeling",     "client": "Clean Feeling",                "seo": true  },
+    { "slug": "denturehaus",      "client": "Denture Haus",                 "seo": true  },
+    { "slug": "elitehp",          "client": "Elite Health and Performance", "seo": true  },
+    { "slug": "everybodies",      "client": "Every Bodies Dietetics",       "seo": true  },
+    { "slug": "foothq",           "client": "Foot HQ",                      "seo": true  },
+    { "slug": "forrm",            "client": "FORRM",                        "seo": false },
+    { "slug": "gladesville",      "client": "Gladesville Healthcare",       "seo": true  },
+    { "slug": "gunnebah",         "client": "Gunnebah",                     "seo": true  },
+    { "slug": "heidelberg",       "client": "Heidelberg Osteopaths",        "seo": true  },
+    { "slug": "jubilee",          "client": "Jubilee Energy",               "seo": true  },
+    { "slug": "mitchellfamily",   "client": "Mitchell Family Acupuncture",  "seo": false },
+    { "slug": "momentum",         "client": "Momentum",                     "seo": false },
+    { "slug": "nourishosteo",     "client": "Nourish Osteo",                "seo": true  },
+    { "slug": "rebound",          "client": "Rebound Health",               "seo": true  },
+    { "slug": "redlands",         "client": "Redlands Dental",              "seo": true  },
+    { "slug": "regenhealth",      "client": "Regen Health",                 "seo": true  },
+    { "slug": "scdc",             "client": "South Coast Denture Clinic",   "seo": true  },
+    { "slug": "shar",             "client": "Southern Highlands Rehab",     "seo": true  },
+    { "slug": "simsteel",         "client": "Simonidis Steel",              "seo": true  },
+    { "slug": "sna",              "client": "Sports Nutrition Association", "seo": true  },
+    { "slug": "stlucia",          "client": "St Lucia Dental",              "seo": true  },
+    { "slug": "stepzfranchise",   "client": "Stepz Fitness Franchise",      "seo": true  },
+    { "slug": "stepzgym",         "client": "Stepz Fitness",                "seo": true  },
+    { "slug": "summitchiro",      "client": "Summit Chiro",                 "seo": true  },
+    { "slug": "sunrisesurveying", "client": "Sunrise Surveying",            "seo": true  },
+    { "slug": "sunshineosteo",    "client": "Sunshine Osteo",               "seo": false },
+    { "slug": "tyco",             "client": "Tyco Creative",                "seo": true  },
+    { "slug": "vikasati",         "client": "Vikasati",                     "seo": true  },
+    { "slug": "villageremedies",  "client": "Village Remedies",             "seo": true  },
+    { "slug": "youandmeot",       "client": "You & Me OT",                  "seo": true  }
+  ]
+}
