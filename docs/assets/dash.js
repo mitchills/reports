@@ -285,7 +285,9 @@ function renderSeo(m, prev) {
 }
 
 /* ─── comment lists — items are strings, or {text, url} for links ─── */
-function renderList(elId, items, emptyMsg) {
+/* variant 'done' swaps the gold star for a gold tick — completed work is
+   shipped work, not a win, and marking it with a star oversells it. */
+function renderList(elId, items, emptyMsg, variant) {
   const el = document.getElementById(elId);
   if (!items || !items.length) { el.innerHTML = emptyPanel(emptyMsg); return; }
   const li = i => {
@@ -293,7 +295,8 @@ function renderList(elId, items, emptyMsg) {
     if (i.url) return `<li><a href="${i.url}" target="_blank" rel="noopener">${i.text}</a></li>`;
     return `<li>${i.text}${i.note ? ` <span class="na">(${i.note})</span>` : ''}</li>`;
   };
-  el.innerHTML = '<div class="notes"><ul>' + items.map(li).join('') + '</ul></div>';
+  el.innerHTML = `<div class="notes${variant === 'done' ? ' done' : ''}"><ul>`
+               + items.map(li).join('') + '</ul></div>';
 }
 
 /* ─── month switch ─── */
@@ -317,7 +320,7 @@ function setMonth(key) {
   const hlWrap = document.getElementById('highlights-section');
   if (hlWrap) hlWrap.style.display = (m.highlights && m.highlights.length) ? '' : 'none';
   renderList('highlights', m.highlights, 'No highlights logged for this month.');
-  renderList('completed',  m.completed,  'No completed work logged for this month.');
+  renderList('completed',  m.completed,  'No completed work logged for this month.', 'done');
 }
 
 /* ─── bootstrap ─── */

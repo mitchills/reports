@@ -1,7 +1,9 @@
+/* Mastered Marketing brand — warm neutral base, champagne gold as the only accent.
+   White panels stay king; the beige lives in the page behind them. */
 :root {
-  --ink:#1d1d1f; --muted:#86868b; --faint:#a1a1a6;
-  --line:#ececef; --bg:#fbfbfd; --panel:#ffffff; --hover:#f5f5f7;
-  --bad:#d23a31; --good:#1a8f5c; --accent:#8a8a8e;
+  --ink:#17140E; --muted:#6E6555; --faint:#9A9181;
+  --line:#E6DFD2; --bg:#FAF7F1; --panel:#ffffff; --hover:#F6F1E8;
+  --bad:#B4453C; --good:#1a8f5c; --accent:#C29A50; --gold:#C29A50;
 }
 * { box-sizing:border-box; }
 html,body { -webkit-font-smoothing:antialiased; }
@@ -25,7 +27,7 @@ h1 { font-size:28px; font-weight:600; letter-spacing:-0.02em; margin:0 0 2px; }
 .toggle button.active { background:var(--ink); border-color:var(--ink); color:#fff; }
 .period-meta { color:var(--muted); font-size:13px; margin:0 0 20px; }
 
-.summary-band { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--ink);
+.summary-band { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--gold);
                 border-radius:12px; padding:18px 22px; font-size:15.5px; line-height:1.55;
                 color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.03); margin-bottom:6px; }
 
@@ -114,12 +116,24 @@ h1 { font-size:28px; font-weight:600; letter-spacing:-0.02em; margin:0 0 2px; }
 .pos { font-weight:600; }
 .mv-up { color:var(--good); } .mv-down { color:var(--bad); } .mv-flat { color:var(--faint); }
 
-/* Comment lists */
+/* Comment lists — gold glyph markers, not browser bullets.
+   A styled glyph keeps the brand colour and renders identically everywhere;
+   a colour emoji would render differently on every OS and read novelty. */
 .notes { padding:20px 24px 22px; }
-.notes ul { margin:0; padding-left:20px; }
-.notes li { margin-bottom:9px; font-size:14px; }
+.notes ul { margin:0; padding-left:0; list-style:none; }
+.notes li { position:relative; padding-left:27px; margin-bottom:12px; font-size:14px; }
 .notes li:last-child { margin-bottom:0; }
-.notes a { color:var(--ink); }
+.notes li::before {
+  content:"\2605";                       /* ★ — a win worth celebrating */
+  position:absolute; left:0; top:0;
+  color:var(--gold); font-size:13px; line-height:1.55;
+}
+.notes.done li::before {
+  content:"\2713";                       /* ✓ — work shipped, not a win */
+  font-size:14px; font-weight:600;
+}
+.notes a { color:var(--ink); text-decoration-color:var(--gold);
+           text-underline-offset:2px; }
 
 /* Empty state — honest, never zeros */
 .empty { padding:22px 24px; color:var(--faint); font-size:13px; }

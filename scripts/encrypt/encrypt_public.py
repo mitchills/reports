@@ -4,12 +4,14 @@ Encrypt every built client dashboard with StatiCrypt.
 
     build/<client>/index.html  ->  docs/<client>/index.html   (served by GitHub Pages)
 
-Password strategy: derived passwords.
-  Each client's password = HMAC-SHA256(ENCRYPT_SECRET, "<client>"), base64, 24 chars.
-  - One master secret to manage; store it in your password manager
-  - Each client gets a unique password — sharing one never exposes another
-  - Deterministic, so any password can be regenerated from secret + client name
-  - The secret never touches the repo (.env is gitignored)
+Password strategy: the client's own slug, lowercase (gladesville -> "gladesville").
+  Chosen for shareability — the AM can say it on a call without a password manager.
+
+  ⚠️ This is a soft gate, not real protection. The slug is also in the public URL and
+  in this public repo's folder listing, so anyone who finds the repo can open any
+  dashboard. It keeps the pages out of search results and off casual eyes; it does
+  NOT keep one client out of another client's numbers. Put a genuinely sensitive
+  client in passwords.json with something unguessable instead.
 
 Usage:
     python3 scripts/encrypt/encrypt_public.py            # encrypt all
@@ -18,9 +20,6 @@ Usage:
 """
 
 import argparse
-import base64
-import hashlib
-import hmac
 import os
 import subprocess
 import sys
@@ -48,10 +47,11 @@ OVERRIDES_FILE = ROOT / "passwords.json"
 
 
 def load_overrides() -> dict:
-    """Memorable per-client passwords, e.g. {"gladesville": "gladesville"}.
-    Gitignored. Anything listed here wins over the HMAC-derived password, and
+    """Per-client password overrides, e.g. {"redlands": "8Kq2-vTn"}.
+    Gitignored. Anything listed here wins over the default slug password, and
     survives `make encrypt` — otherwise a custom password gets silently
-    clobbered the next time everything is re-encrypted."""
+    clobbered the next time everything is re-encrypted. Use this for any client
+    whose numbers shouldn't be openable by anyone holding the URL."""
     if not OVERRIDES_FILE.exists():
         return {}
     try:
@@ -63,16 +63,11 @@ def load_overrides() -> dict:
         return {}
 
 
-def derive_password(secret: str, client: str) -> str:
-    digest = hmac.new(secret.encode(), client.encode(), hashlib.sha256).digest()
-    return base64.urlsafe_b64encode(digest)[:24].decode("ascii")
-
-
-def password_for(secret: str, client: str, overrides: dict) -> tuple:
-    """Returns (password, is_custom)."""
+def password_for(client: str, overrides: dict) -> tuple:
+    """Returns (password, is_custom). Default = the client's own slug."""
     if client in overrides and overrides[client]:
         return str(overrides[client]), True
-    return derive_password(secret, client), False
+    return client.lower(), False
 
 
 def encrypt(src: Path, out_dir: Path, password: str) -> bool:
@@ -96,7 +91,7 @@ def table(passwords, custom=None, results=None):
     print(f"  {'-'*24} {'-'*26} {'-'*9} {'-'*44}")
     for name, pwd in passwords.items():
         status = f"  [{results[name]}]" if results else ""
-        kind = "custom" if custom.get(name) else "derived"
+        kind = "custom" if custom.get(name) else "slug"
         url = f"hub.masteredmarketing.com/reports/{name}/"
         print(f"  {name:<24} {pwd:<26} {kind:<9} {url}{status}")
     print()
@@ -107,11 +102,6 @@ def main():
     ap.add_argument("--show", action="store_true")
     ap.add_argument("--client")
     args = ap.parse_args()
-
-    secret = os.environ.get("ENCRYPT_SECRET", "")
-    if not secret:
-        print("ERROR: ENCRYPT_SECRET is not set (expected in .env).", file=sys.stderr)
-        sys.exit(1)
 
     if args.show:
         names = sorted(d.name for d in (ROOT / "src").iterdir() if d.is_dir())
@@ -132,7 +122,7 @@ def main():
         sys.exit(0)
 
     overrides = load_overrides()
-    resolved  = {n: password_for(secret, n, overrides) for n in names}
+    resolved  = {n: password_for(n, overrides) for n in names}
     passwords = {n: p for n, (p, _) in resolved.items()}
     custom    = {n: c for n, (_, c) in resolved.items()}
 
