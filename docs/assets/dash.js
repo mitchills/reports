@@ -284,6 +284,86 @@ function renderSeo(m, prev) {
        top positions, biggest movers and new entries.</div>` : '');
 }
 
+/* ─── 4. GOOGLE MAPS (Google Business Profile) — a separate surface to the website.
+   Search Console cannot see Maps at all, so nothing else on this dashboard covers it. ─── */
+function renderMaps(m, prev) {
+  const el   = document.getElementById('maps');
+  const wrap = document.getElementById('maps-section');
+  const g = m.maps, p = prev && prev.maps;
+
+  /* Optional section. Hidden outright when the client has no Business Profile
+     tracked — an empty panel reads as work we didn't do. */
+  if (!g) { if (wrap) wrap.style.display = 'none'; el.innerHTML = ''; return; }
+  if (wrap) wrap.style.display = '';
+
+  /* VIEWS = Maps-surface + Search-surface impressions, shown as ONE number.
+     data.json keeps them separate (the split matters in /seo-deep-dive, where the two
+     surfaces routinely move in opposite directions) but the client dashboard must not
+     show a second "Search impressions": the SEO strip above already has one from Search
+     Console measuring the WEBSITE, an order of magnitude larger. Two same-named numbers
+     that don't reconcile is how you lose trust in the whole page.
+     Summed only when BOTH are present — a partial sum would understate views and read
+     as a drop. */
+  const views  = (has(g.impressions_maps) && has(g.impressions_search))
+               ? g.impressions_maps + g.impressions_search : null;
+  const pviews = (p && has(p.impressions_maps) && has(p.impressions_search))
+               ? p.impressions_maps + p.impressions_search : null;
+
+  let out = '<div class="kpi-row strip">' +
+    kpiHTML('Views', has(views) ? num(views) : '—', delta(views, pviews, true)) +
+    /* Interactions is stored, not summed on the fly, because a month can legitimately
+       have one component missing and silently adding nulls would understate the total. */
+    kpiHTML('Interactions', has(g.interactions) ? num(g.interactions) : '—',
+            delta(g.interactions, p && p.interactions, true)) +
+    kpiHTML('Phone calls', has(g.calls) ? num(g.calls) : '—',
+            delta(g.calls, p && p.calls, true)) +
+    kpiHTML('Website clicks', has(g.website_clicks) ? num(g.website_clicks) : '—',
+            delta(g.website_clicks, p && p.website_clicks, true)) +
+    /* Reviews: the headline is the running total, but the month's NEW reviews are what
+       the clinic actually earned, so they lead the delta slot instead of a percentage.
+       A percentage change on a total that only ever grows is noise. */
+    kpiHTML('Reviews', has(g.reviews_total) ? num(g.reviews_total) : '—',
+            has(g.reviews_new) && g.reviews_new > 0
+              ? { cls:'delta-up', str:'+' + num(g.reviews_new) + ' this month' }
+              : { cls:'delta-flat', str:'—' }) +
+    '</div>';
+
+  /* MAP-PACK COVERAGE, in plain English.
+     Google Maps rank is geographic, not a single number: the profile is checked at a
+     grid of points across the suburb and can be in the pack at one end and absent at
+     the other. So we report the SHARE of the area, never a position.
+     Same qualification rule as keyword rankings: a term earns its line by holding real
+     coverage or by JUMPING, never by dropping. Nothing qualifying means no line at all,
+     which is honest — not a 0% line that reads as a failure report. */
+  const cov = (g.coverage || []).filter(c =>
+    has(c.top3_points) && has(c.grid_points) && c.grid_points > 0);
+  if (cov.length) {
+    const pct   = c => c.top3_points / c.grid_points;
+    const prevC = {};
+    ((p && p.coverage) || []).forEach(c => {
+      if (has(c.top3_points) && has(c.grid_points) && c.grid_points > 0) prevC[c.keyword] = pct(c);
+    });
+    const HOLD = 0.20, JUMP = 0.15;
+    const rows = cov.filter(c => {
+      const now  = pct(c);
+      const was  = prevC[c.keyword];
+      return now >= HOLD || (has(was) && now - was >= JUMP);
+    }).sort((a, b) => pct(b) - pct(a));
+
+    if (rows.length) {
+      out += '<div class="notes"><ul>' + rows.map(c => {
+        const now = Math.round(pct(c) * 100);
+        const was = prevC[c.keyword];
+        const move = has(was) ? ` (up from ${Math.round(was * 100)}%)` : '';
+        return `<li>Showing in the top 3 on Google Maps across <strong>${now}%</strong>
+                of your local area for &ldquo;${c.keyword}&rdquo;${move}</li>`;
+      }).join('') + '</ul></div>';
+    }
+  }
+
+  el.innerHTML = out;
+}
+
 /* ─── comment lists — items are strings, or {text, url} for links ─── */
 /* variant 'done' swaps the gold star for a gold tick — completed work is
    shipped work, not a win, and marking it with a star oversells it. */
@@ -314,6 +394,7 @@ function setMonth(key) {
   renderPaid(m, prev);
   renderSite(m, prev);
   renderSeo(m, prev);
+  renderMaps(m, prev);
   const hlWrap = document.getElementById('highlights-section');
   if (hlWrap) hlWrap.style.display = (m.highlights && m.highlights.length) ? '' : 'none';
   renderList('highlights', m.highlights, 'No highlights logged for this month.');
@@ -365,9 +446,13 @@ async function init() {
         .map(m => `<button id="btn-${m.key}" onclick="setMonth('${m.key}')">${m.label}</button>`).join('');
 
     const d = new Date(DATA.updated_at);
-    const sources = DATA.seo === false
+    /* Only name Business Profile as a source when a month actually carries Maps data,
+       so a client without a tracked profile isn't told we used a source we didn't. */
+    const hasMaps = DATA.months.some(m => m.maps);
+    const sources = (DATA.seo === false
       ? 'Google Ads, Meta Ads & GA4'
-      : 'Google Ads, Meta Ads, GA4, Search Console & SE Ranking';
+      : 'Google Ads, Meta Ads, GA4, Search Console & SE Ranking')
+      + (hasMaps ? ' & Google Business Profile' : '');
     document.getElementById('foot').textContent = sources + ' · Updated ' +
       d.toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' });
 

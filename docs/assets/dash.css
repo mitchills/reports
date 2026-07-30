@@ -123,6 +123,11 @@ h1::after { content:""; display:block; width:36px; height:2px;
    A styled glyph keeps the brand colour and renders identically everywhere;
    a colour emoji would render differently on every OS and read novelty. */
 .notes { padding:20px 24px 22px; }
+/* In the Maps panel the notes sit directly under the KPI strip rather than alone in
+   their own panel, so the strip's 20px bottom padding already provides the gap and the
+   default 20px top stacks into a 40px hole. Tightened here only — Highlights and Work
+   Completed still need the full padding as their panel's inner spacing. */
+#maps .notes { padding-top:4px; }
 .notes ul { margin:0; padding-left:0; list-style:none; }
 .notes li { position:relative; padding-left:27px; margin-bottom:12px; font-size:14px; }
 .notes li:last-child { margin-bottom:0; }
