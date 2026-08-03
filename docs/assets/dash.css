@@ -69,18 +69,25 @@ h1::after { content:""; display:block; width:36px; height:2px;
 .na { color:var(--faint); font-size:15px; font-weight:400; }
 
 /* KPI row */
-.kpi-row { display:flex; padding:24px 24px 20px; }
-.kpi { flex:1; padding:0 20px; border-right:1px solid var(--line); }
+/* KPIs are flex columns with the delta pushed to the bottom (margin-top:auto), so
+   every delta in a row sits on one baseline even when one KPI carries an extra
+   sub-line. Without it, a single wrapping value (e.g. "9,586 4,107 in top 10")
+   made its own delta drop a line and left dead space under every other KPI. */
+.kpi-row { display:flex; padding:24px 24px 20px; align-items:stretch; }
+.kpi { flex:1; padding:0 20px; border-right:1px solid var(--line);
+       display:flex; flex-direction:column; }
 .kpi:first-child { padding-left:0; }
 .kpi:last-child  { border-right:none; }
 .kpi-label { font-size:11px; font-weight:600; text-transform:uppercase;
              letter-spacing:.04em; color:var(--faint); margin-bottom:6px; }
 .kpi-value { font-size:26px; font-weight:600; letter-spacing:-0.02em;
              font-variant-numeric:tabular-nums; line-height:1.2; }
-.kpi-delta { font-size:13px; margin-top:5px; }
+.kpi-delta { font-size:13px; margin-top:auto; padding-top:5px; }
 .strip .kpi-value { font-size:22px; }
 .strip .kpi { padding:0 16px; }
-.of { font-size:13px; font-weight:400; color:var(--faint); letter-spacing:0; }
+/* Its own line, not a wrapped fragment of the number above it. */
+.of { display:block; font-size:12.5px; font-weight:400; color:var(--faint);
+      letter-spacing:0; margin-top:3px; }
 
 .delta-up        { color:var(--good); }
 .delta-down      { color:var(--bad); }
@@ -99,14 +106,20 @@ h1::after { content:""; display:block; width:36px; height:2px;
 .ads-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 
 /* Tables */
-.tbl { width:100%; border-collapse:collapse; font-size:14px; }
+/* table-layout:fixed so the two numeric columns land at the SAME x position in every
+   table on the page. With auto layout each table sized its first column to its own
+   content, so Top Pages (long slugs) pushed its numbers further right than Conversions. */
+.tbl { width:100%; border-collapse:collapse; font-size:14px; table-layout:fixed; }
 .tbl th { padding:12px 24px; border-bottom:1px solid var(--line); text-align:left;
           font-size:10px; font-weight:600; text-transform:uppercase;
           letter-spacing:.04em; color:var(--faint); }
-.tbl th.r, .tbl td.r { text-align:right; font-variant-numeric:tabular-nums; }
+.tbl th.r, .tbl td.r { text-align:right; font-variant-numeric:tabular-nums; width:150px; }
 .tbl td { padding:11px 24px; border-bottom:1px solid var(--line); }
 .tbl tr:last-child td { border-bottom:none; }
-.page-path { font-family:ui-monospace,SFMono-Regular,monospace; font-size:13px; color:var(--muted); }
+/* overflow-wrap needed because table-layout:fixed no longer lets a long slug
+   stretch the column — it has to wrap inside it instead. */
+.page-path { font-family:ui-monospace,SFMono-Regular,monospace; font-size:13px;
+             color:var(--muted); overflow-wrap:anywhere; }
 .kw { font-weight:500; }
 .vol { color:var(--muted); }
 .row-jumped { background:#f6fbf8; }
@@ -154,5 +167,7 @@ h1::after { content:""; display:block; width:36px; height:2px;
   .kpi, .card { flex:1 1 100%; border-right:none; padding-left:0; }
   .card-value { font-size:32px; }
   .tbl th, .tbl td { padding-left:14px; padding-right:14px; }
+  /* 2 x 150px eats a phone's width, so the label column keeps room to breathe */
+  .tbl th.r, .tbl td.r { width:88px; }
   .cell-val { font-size:16px; }
 }
