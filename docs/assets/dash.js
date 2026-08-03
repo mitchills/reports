@@ -22,11 +22,20 @@ function delta(curr, prev, higherIsBetter) {
              return { cls: higherIsBetter ? 'delta-down' : 'delta-cost-down', str };
 }
 
-function kpiHTML(label, value, d) {
+/* One sub-line slot under every value, so a percentage and a static note (e.g.
+   "4,107 in top 10") land on the SAME baseline instead of stacking. A real delta
+   wins the slot; otherwise the note takes it; otherwise the slot renders empty.
+   The old '—' placeholder is deliberately dropped — it filled the row with dashes
+   that carried no information and only pushed the layout around. */
+function kpiHTML(label, value, d, note) {
+  const real = d && d.str && d.str !== '—';
+  const sub = real ? `<div class="kpi-delta ${d.cls}">${d.str}</div>`
+            : note ? `<div class="kpi-delta kpi-note">${note}</div>`
+            : '<div class="kpi-delta"></div>';
   return `<div class="kpi">
     <div class="kpi-label">${label}</div>
     <div class="kpi-value">${value}</div>
-    <div class="kpi-delta ${d.cls}">${d.str}</div>
+    ${sub}
   </div>`;
 }
 const emptyPanel = msg => `<div class="empty">${msg}</div>`;
@@ -229,9 +238,8 @@ function renderSeo(m, prev) {
       /* lower position number = better, so this delta is inverted */
       kpiHTML('Avg. position', (s && has(s.avg_position)) ? s.avg_position.toFixed(1) : '—',
               delta(s && s.avg_position, ps && ps.avg_position, false)) +
-      (has(kw) ? kpiHTML('Keywords ranking',
-              num(kw) + ((s && has(s.keywords_top10)) ? ` <span class="of">${num(s.keywords_top10)} in top 10</span>` : ''),
-              delta(kw, pkw, true)) : '') +
+      (has(kw) ? kpiHTML('Keywords ranking', num(kw), delta(kw, pkw, true),
+              (s && has(s.keywords_top10)) ? `${num(s.keywords_top10)} in top 10` : '') : '') +
       kpiHTML('Pages ranking', (s && has(s.ranked_pages)) ? num(s.ranked_pages) : '—',
               delta(s && s.ranked_pages, ps && ps.ranked_pages, true)) +
       '</div>';
