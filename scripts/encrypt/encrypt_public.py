@@ -21,9 +21,15 @@ Usage:
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+# On Windows npx is npx.cmd, and CreateProcess does not apply PATHEXT — a bare
+# ["npx", ...] raises WinError 2 even though npx is on PATH. Resolve it up front;
+# shutil.which returns the plain path on macOS/Linux, so behaviour is unchanged there.
+NPX = shutil.which("npx") or "npx"
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -74,7 +80,7 @@ def password_for(client: str, overrides: dict) -> tuple:
 
 def encrypt(src: Path, out_dir: Path, password: str) -> bool:
     out_dir.mkdir(parents=True, exist_ok=True)
-    cmd = ["npx", "--yes", "staticrypt", str(src),
+    cmd = [NPX, "--yes", "staticrypt", str(src),
            "--password", password, "-d", str(out_dir), "--short",
            "--config", CONFIG]
     if TEMPLATE.exists():
