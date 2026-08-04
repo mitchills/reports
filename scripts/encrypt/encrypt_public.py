@@ -27,6 +27,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
+sys.path.insert(0, str(ROOT / "scripts"))
+from datapath import passwords_file  # noqa: E402
+
 _env = ROOT / ".env"
 if _env.exists():
     for _line in _env.read_text().splitlines():
@@ -43,20 +46,19 @@ TEMPLATE = Path(__file__).parent / "template.html"
 CONFIG   = ".staticrypt.json"
 
 
-OVERRIDES_FILE = ROOT / "passwords.json"
-
-
 def load_overrides() -> dict:
     """Per-client password overrides, e.g. {"redlands": "8Kq2-vTn"}.
-    Gitignored. Anything listed here wins over the default slug password, and
+    Lives in the private mm-reports-data repo (never in this public one), so the
+    whole team sees the same passwords. Anything listed here wins over the default slug password, and
     survives `make encrypt` — otherwise a custom password gets silently
     clobbered the next time everything is re-encrypted. Use this for any client
     whose numbers shouldn't be openable by anyone holding the URL."""
-    if not OVERRIDES_FILE.exists():
+    overrides_file = passwords_file()
+    if not overrides_file.exists():
         return {}
     try:
         import json
-        return json.loads(OVERRIDES_FILE.read_text())
+        return json.loads(overrides_file.read_text())
     except Exception as e:
         print(f"WARNING: could not read passwords.json ({e}) — using derived passwords.",
               file=sys.stderr)

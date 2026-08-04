@@ -3,12 +3,31 @@
 One password-protected dashboard per client, monthly historical view.
 Live at `https://hub.masteredmarketing.com/reports/[client]/`
 
+## ⚠️ You need TWO repos
+
+This repo is **public**, so it holds only the encrypted pages. The client numbers live
+in the **private** `mm-reports-data` repo. Clone both, as siblings:
+
+```
+git clone https://github.com/mitchills/reports.git ~/reports
+git clone https://github.com/masteredmarketing/mm-reports-data.git ~/mm-reports-data
+```
+
+`build.py` finds the data automatically when the two sit side by side. Cloned elsewhere?
+Set `MM_REPORTS_DATA=/path/to/mm-reports-data`.
+
+**Why public:** GitHub only serves Pages from a private repo on a paid plan, and the org
+is on the free one. **Why not just move this repo into the org:** `hub.masteredmarketing.com`
+is a custom domain on the personal `mitchills.github.io` account. Transferring this repo
+would change the URL to `masteredmarketing.github.io/reports/` and break every dashboard
+link already sent to a client.
+
 ## Structure
 
 ```
 clients.json               the roster — name, slug, seo flag. Add a client here.
 src/[client]/index.html    page shell (generated — don't hand-edit, see below)
-src/[client]/data.json     the client's numbers — GITIGNORED, never pushed
+../mm-reports-data/[client]/data.json    the client's numbers — PRIVATE REPO
 docs/assets/dash.css       shared styling — edit once, every client updates
 docs/assets/dash.js        shared render logic + keyword selection rules
 docs/[client]/index.html   ENCRYPTED build output — this is what Pages serves
@@ -22,15 +41,21 @@ scripts/encrypt/           StatiCrypt encryption + the password-gate template
 regenerated from `scripts/templates/index.html` by `make scaffold` — an edit to one
 copy gets overwritten and the other 30 never get it. Change the template instead.
 
-**Why data.json is gitignored:** StatiCrypt encrypts an HTML file, but a `data.json`
-sitting beside it in a public repo stays plainly readable. `build.py` inlines the data
-into the page *before* encryption, so the only published copy of a client's numbers is
-inside the encrypted blob. Never commit `src/*/data.json`.
+**Why data.json lives in the other repo:** StatiCrypt encrypts an HTML file, but a
+`data.json` sitting beside it in a public repo stays plainly readable. `build.py` inlines
+the data into the page *before* encryption, so the only published copy of a client's
+numbers is inside the encrypted blob. Never commit a `data.json` here.
+
+A client with no data.json is **skipped** at build time, which leaves their already-published
+dashboard exactly as it was. Missing data can't blank a live page.
 
 ## Monthly update
 
-1. `/mm-client-report [client]` appends the new month to `src/[client]/data.json`
-2. `make encrypt` — builds and re-encrypts every client
+Pull both repos first, or you'll build on top of someone else's stale numbers.
+
+1. `cd ~/mm-reports-data && git pull` — then `/mm-client-report [client]` appends the new
+   month to `[client]/data.json`. Commit + push that repo.
+2. `cd ~/reports && git pull && make encrypt` — builds and re-encrypts every client.
 3. Commit + push. Pages redeploys in ~60 seconds.
 
 ```
@@ -51,8 +76,9 @@ make preview        serve docs/ at localhost:8765
 public repo's folder listing, so anyone who finds the repo can open any dashboard. It
 keeps the pages out of Google and off casual eyes; it does not keep one client out of
 another's numbers. For a client whose figures genuinely can't be seen by anyone else,
-add an unguessable password in `passwords.json` (gitignored) — overrides survive
-`make encrypt`.
+add an unguessable password in `mm-reports-data/passwords.json` — overrides survive
+`make encrypt`, and living in the shared private repo means the whole team sees the
+same password rather than each machine deriving its own.
 
 ## Adding a client
 

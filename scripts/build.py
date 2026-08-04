@@ -6,9 +6,10 @@ Why this exists: StatiCrypt encrypts an HTML file, but a separate data.json sitt
 beside it in the repo stays plainly readable. Inlining the data means the ONLY
 published copy of a client's numbers is inside the encrypted blob.
 
-  src/<client>/index.html + src/<client>/data.json  ->  build/<client>/index.html
+  src/<client>/index.html + <data repo>/<client>/data.json  ->  build/<client>/index.html
 
-src/<client>/data.json is gitignored and never leaves the machine.
+The page shells live here; the numbers live in the private repo mm-reports-data,
+because this repo is public. See scripts/datapath.py for how that folder is found.
 
 Usage:
     python3 scripts/build.py              # build every client
@@ -20,6 +21,9 @@ import re
 import shutil
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from datapath import data_file, data_root, require_data_or_explain  # noqa: E402
 
 ROOT  = Path(__file__).resolve().parent.parent
 SRC   = ROOT / "src"
@@ -33,12 +37,14 @@ MARKER_RE = re.compile(r'<script src="\.\./assets/dash\.js(?:\?[^"]*)?"></script
 def build_client(client_dir: Path) -> bool:
     name = client_dir.name
     html_path = client_dir / "index.html"
-    data_path = client_dir / "data.json"
+    data_path = data_file(name)
 
     if not html_path.exists():
         print(f"  {name:<20} SKIP  (no index.html)")
         return False
     if not data_path.exists():
+        # Skipping leaves this client's already-published page untouched, which is
+        # what we want — never blank a live dashboard just because data is missing.
         print(f"  {name:<20} SKIP  (no data.json — nothing to publish)")
         return False
 
@@ -84,7 +90,9 @@ def main():
     if BUILD.exists() and not only:
         shutil.rmtree(BUILD)
 
-    print(f"\nInlining data for {len(clients)} client(s): src/ -> build/\n")
+    resolved = require_data_or_explain()
+    where = resolved if resolved else f"{SRC} (legacy in-repo data)"
+    print(f"\nInlining data for {len(clients)} client(s)\n  data: {where}\n  out:  {BUILD}\n")
     built = sum(build_client(c) for c in clients)
     print(f"\n{built} of {len(clients)} built.\n")
     if built == 0:
