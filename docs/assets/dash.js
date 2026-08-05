@@ -146,6 +146,63 @@ function renderPaid(m, prev) {
     '</div>';
 }
 
+/* ─── 1b. PAID BY SERVICE — optional. Multi-service clinics (e.g. a clinic running
+   Chiro/Physio/Podiatry as separate campaigns) get a per-service breakdown under the
+   account-wide Paid card. Hidden entirely for clients without a `services` block —
+   the section div exists in every client's shell so the shared JS never hits a
+   missing element, but stays display:none until data shows up. ─── */
+function renderServices(m, prev) {
+  const wrap = document.getElementById('services-section');
+  const el   = document.getElementById('services');
+  if (!wrap || !el) return;               // defensive — shell out of date
+  const services = m.services, pServices = prev && prev.services;
+
+  if (!services || !Object.keys(services).length) {
+    wrap.style.display = 'none'; el.innerHTML = '';
+    return;
+  }
+  wrap.style.display = '';
+
+  const tot = (a, b) => {
+    if (!a && !b) return null;
+    const spend = (a && a.spend || 0) + (b && b.spend || 0);
+    const conv  = (a && a.conversions || 0) + (b && b.conversions || 0);
+    return { spend, conversions: conv, cpa: conv > 0 ? spend / conv : null };
+  };
+
+  el.innerHTML = Object.keys(services).map(name => {
+    const svc  = services[name];
+    const psvc = pServices && pServices[name];
+    const g = svc.google_ads, mt = svc.meta_ads;
+    const pg = psvc && psvc.google_ads, pm = psvc && psvc.meta_ads;
+    const t = tot(g, mt), pt = tot(pg, pm);
+    if (!t) return '';
+
+    const card = (label, key, fmt, better) => {
+      const val = t[key];
+      const d   = delta(val, pt && pt[key], better);
+      const split = [
+        { name:'Google', v: g  && g[key] },
+        { name:'Meta',   v: mt && mt[key] }
+      ].filter(s => has(s.v));
+      return `<div class="card">
+        <div class="card-label">${label}</div>
+        <div class="card-value">${has(val) ? fmt(val) : '<span class="na">no data</span>'}</div>
+        <div class="card-delta ${d.cls}">${d.str}</div>
+        <div class="split">${split.map(s =>
+          `<span class="split-pill"><b>${fmt(s.v)}</b> ${s.name}</span>`).join('')}</div>
+      </div>`;
+    };
+
+    return `<div class="sub-label">${name}</div>
+      <div class="card-row">
+        ${card('Conversions',         'conversions', num,  true)}
+        ${card('Cost per conversion', 'cpa',         aud2, false)}
+        ${card('Spend',               'spend',       aud,  null)}
+      </div>`;
+  }).join('');
+}
+
 /* ─── 2. WEBSITE (GA4) — three separate panels so traffic, conversions and pages
    don't read as one undifferentiated block ─── */
 function renderSite(m, prev) {
@@ -400,6 +457,7 @@ function setMonth(key) {
   renderSummary(m);
   renderBusiness(m, prev);
   renderPaid(m, prev);
+  renderServices(m, prev);
   renderSite(m, prev);
   renderSeo(m, prev);
   renderMaps(m, prev);
