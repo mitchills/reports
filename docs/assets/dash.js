@@ -303,9 +303,18 @@ function renderSeo(m, prev) {
   }
 
   /* Which keywords make the cut. A keyword earns its place by RANKING WELL,
-     JUMPING, or being a NEW WIN — never by dropping. Drops are still shown
-     honestly on keywords that qualified some other way, we just never
-     surface a keyword because it fell. */
+     GAINING GROUND, HOLDING a respectable position, or being a NEW WIN —
+     never by dropping. Drops are still shown honestly on keywords that
+     qualified some other way, we just never surface a keyword because it fell.
+
+     Any gain counts, not just a big one: a keyword that climbed a single spot
+     is progress worth showing, while the "big jump" tag stays at >= JUMP so
+     the standout movers still read as standouts.
+
+     HELD_POS extends the range down to #30 so steady mid-page commercial terms
+     appear, but only where they did NOT fall — otherwise widening the range
+     would smuggle decliners onto the page through the back door, which is the
+     one thing this rule exists to prevent. */
   const kwEl = document.getElementById('rankings');
   const all = (m.rankings || []).filter(r => has(r.position) && r.position > 0);
   if (!all.length) {
@@ -313,11 +322,14 @@ function renderSeo(m, prev) {
     return;
   }
 
-  const JUMP = 3, TOP = 3, GOOD_POS = 10, MIN_VOL = 50, NEW_POS = 20, MAX_ROWS = 14;
+  const JUMP = 3, GAIN = 1, TOP = 3, GOOD_POS = 10, HELD_POS = 30,
+        MIN_VOL = 50, NEW_POS = 20, MAX_ROWS = 14;
+  const fell = r => has(r.movement) && r.movement < 0;
   const qualifies = r =>
-       (has(r.movement) && r.movement >= JUMP)                       // jumped
+       (has(r.movement) && r.movement >= GAIN)                       // gained ground, however small
     || (r.position <= TOP)                                           // top 3, any volume
     || (r.position <= GOOD_POS && (r.volume || 0) >= MIN_VOL)        // ranks well on a commercial term
+    || (r.position <= HELD_POS && (r.volume || 0) >= MIN_VOL && !fell(r))  // holding a respectable spot
     || (r.is_new && r.position <= NEW_POS);                          // new win worth showing
 
   const rows = all.filter(qualifies).sort((a, b) => {
