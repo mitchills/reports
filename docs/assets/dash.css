@@ -170,3 +170,56 @@ h1::after { content:""; display:block; width:36px; height:2px;
   .tbl th.r, .tbl td.r { width:88px; }
   .cell-val { font-size:16px; }
 }
+
+/* ─── Booking funnel ───────────────────────────────────────────────────────
+   Four places people pass through, with the action that carries them to the
+   next one sitting in the gap between. Prefixed .fn- so nothing here can
+   collide with the KPI/card rules above. */
+.fn-head { display:flex; flex-wrap:wrap; gap:12px; align-items:baseline;
+           justify-content:space-between; padding:20px 24px 18px; }
+.fn-ctx  { font-size:11px; font-weight:600; text-transform:uppercase;
+           letter-spacing:.06em; color:var(--faint); }
+.fn-toggle { display:flex; gap:6px; flex-wrap:wrap; }
+.fn-toggle button {
+  padding:6px 14px; border-radius:999px; border:1px solid var(--line);
+  background:var(--panel); color:var(--muted); font-size:12.5px; font-weight:500;
+  cursor:pointer; font-family:inherit; transition:all .15s ease;
+}
+.fn-toggle button:hover { border-color:var(--gold); color:var(--ink); }
+.fn-toggle button[aria-pressed="true"] { background:var(--ink); border-color:var(--ink); color:#fff; }
+.fn-toggle button:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+
+.fn-steps { padding:0 24px; }
+.fn-step { display:grid; grid-template-columns:1fr auto; gap:5px 20px; align-items:baseline; }
+.fn-label { font-size:13px; font-weight:500; color:var(--muted); }
+.fn-value { font-size:27px; font-weight:600; letter-spacing:-0.025em;
+            font-variant-numeric:tabular-nums; line-height:1.1; grid-row:span 2;
+            align-self:center; text-align:right; min-width:6ch; }
+.fn-track { display:block; height:10px; border-radius:999px;
+            background:var(--hover); overflow:hidden; }
+/* display:block matters — an inline span ignores width and the bar never draws */
+.fn-fill  { display:block; height:100%; border-radius:999px;
+            transition:width .45s cubic-bezier(.4,0,.2,1); }
+
+.fn-gap { display:flex; align-items:center; gap:10px; padding:12px 0; }
+.fn-gap .fn-rule { flex:0 0 20px; height:1px; background:var(--line); }
+.fn-pct {
+  display:inline-flex; align-items:baseline; gap:6px;
+  padding:4px 12px; border-radius:999px;
+  background:var(--hover); color:var(--ink);
+  font-size:15px; font-weight:600; letter-spacing:-0.02em;
+  font-variant-numeric:tabular-nums;
+}
+.fn-pct span { font-size:12px; font-weight:500; color:var(--muted); letter-spacing:0; }
+
+.fn-foot { margin:20px 24px 0; padding:16px 0 20px; border-top:1px solid var(--line); }
+.fn-insight { font-size:14.5px; color:var(--ink); line-height:1.55; }
+.fn-insight b { font-weight:600; }
+.fn-compare { margin-top:7px; font-size:13.5px; color:var(--muted); line-height:1.55; }
+.fn-compare b { font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+
+@media (max-width:720px) {
+  .fn-value { font-size:23px; }
+  .fn-gap { flex-wrap:wrap; }
+}
+@media (prefers-reduced-motion:reduce) { .fn-fill { transition:none; } }

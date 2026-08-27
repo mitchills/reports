@@ -444,6 +444,119 @@ function renderMaps(m, prev) {
 /* ─── comment lists — items are strings, or {text, url} for links ─── */
 /* variant 'done' swaps the gold star for a gold tick — completed work is
    shipped work, not a win, and marking it with a star oversells it. */
+/* ─── booking funnel ─── */
+/* Four places, three actions. Optional: a client with no `funnel` key never sees it.
+   The channel choice is card-local state so switching month keeps the same channel. */
+var FN_CHANNEL = 'all';
+
+function renderFunnel(m) {
+  const wrap = document.getElementById('funnel-section');
+  const el   = document.getElementById('funnel');
+  const f    = m.funnel;
+
+  if (!f || !f.channels || !f.channels.length) {
+    if (wrap) wrap.style.display = 'none';
+    if (el) el.innerHTML = '';
+    return;
+  }
+  if (wrap) wrap.style.display = '';
+
+  const chans = f.channels;
+  const byKey = k => chans.find(c => c.key === k);
+  if (!byKey(FN_CHANNEL)) FN_CHANNEL = chans[0].key;
+
+  const steps = c => [c.impressions, c.visits, c.booking_page, c.bookings];
+  const system = f.booking_system || 'the booking system';
+
+  const NAMES = ['Impressions', 'Website visits', system + ' booking page', 'Bookings'];
+  const TIPS  = ['Times an ad or listing was shown',
+                 'Sessions recorded in Google Analytics',
+                 'Sessions that reached the ' + system + ' booking page',
+                 'Confirmed ' + system + ' appointments, not enquiries or button clicks'];
+  const BARS  = ['#B7AC97', '#17140E', '#8A6F3E', '#C29A50'];
+  const ACTS  = ['reached the website', 'opened the booking page', 'finished booking'];
+
+  /* Bars use a log scale. 47,861 impressions and 9 bookings can't share a linear one —
+     every step below the first renders as an invisible sliver. The log gives the taper;
+     the percentage and the count beside it give the real size. */
+  const width = (v, top) => (Math.log10(Math.max(v, 1)) / Math.log10(top)) * 100;
+  const pctOf = (a, b) => (a / b) * 100;
+  const pctTxt = n => n.toFixed(n < 10 ? 1 : 0) + '%';
+  /* A channel with a zero or missing step can't carry a rate — bail rather than print NaN. */
+  const usable = c => steps(c).every(v => has(v) && v > 0);
+
+  const c = byKey(FN_CHANNEL);
+  const v = steps(c);
+  const top = v[0];
+
+  let body = '';
+  v.forEach((value, i) => {
+    if (i > 0) {
+      body += '<div class="fn-gap"><span class="fn-rule"></span>'
+            + '<span class="fn-pct">' + (has(value) && v[i-1] ? pctTxt(pctOf(value, v[i-1])) : '—')
+            + '<span>' + ACTS[i-1] + '</span></span></div>';
+    }
+    body += '<div class="fn-step">'
+          + '<span class="fn-label" title="' + TIPS[i] + '">' + NAMES[i] + '</span>'
+          + '<span class="fn-value">' + (has(value) ? num(value) : '—') + '</span>'
+          + '<span class="fn-track"><span class="fn-fill" style="width:'
+          + (has(value) ? width(value, top) : 0) + '%;background:' + BARS[i] + '"></span></span>'
+          + '</div>';
+  });
+
+  /* Both lines below are computed from the numbers on the card, so neither can go
+     stale and nobody has to hand-write a note each month. */
+  let insight = '';
+  if (usable(c)) {
+    const early = pctOf(v[2], v[1]) <= pctOf(v[3], v[2]);
+    insight = early
+      ? '<b>The biggest drop is before they reach the booking page.</b> '
+        + num(v[1] - v[2]) + ' of ' + num(v[1]) + ' visited the website and never opened ' + system + '.'
+      : '<b>The biggest drop is inside the booking page.</b> '
+        + num(v[2] - v[3]) + ' of ' + num(v[2]) + ' opened ' + system + " and didn't finish booking.";
+  }
+
+  /* A rate means nothing on its own, so the second line is always a comparison. */
+  const endRate = x => (x.bookings / x.visits) * 100;
+  const all = byKey('all');
+  let compare = '';
+  if (all && usable(all)) {
+    const overall = endRate(all);
+    if (FN_CHANNEL === 'all') {
+      const others = chans.filter(x => x.key !== 'all' && usable(x))
+                          .sort((a, b) => endRate(b) - endRate(a));
+      if (others.length >= 2) {
+        const best = others[0], worst = others[others.length - 1];
+        compare = '<b>' + best.label + '</b> converts best: ' + endRate(best).toFixed(1)
+                + '% of its visitors book. <b>' + worst.label + '</b> is lowest at '
+                + endRate(worst).toFixed(1) + '%.';
+      }
+    } else if (usable(c)) {
+      const r = endRate(c);
+      const stance = r > overall * 1.15 ? 'ahead of'
+                   : (r < overall * 0.85 ? 'behind' : 'in line with');
+      compare = '<b>' + r.toFixed(1) + '%</b> of ' + c.label + ' visitors end up booking, '
+              + stance + ' the <b>' + overall.toFixed(1) + '%</b> across all channels.';
+    }
+  }
+
+  el.innerHTML =
+      '<div class="fn-head"><span class="fn-ctx">' + c.label + '</span>'
+    + '<div class="fn-toggle" role="group" aria-label="Channel">'
+    + chans.map(x => '<button type="button" data-fn="' + x.key + '" aria-pressed="'
+        + (x.key === FN_CHANNEL) + '">' + x.label + '</button>').join('')
+    + '</div></div>'
+    + '<div class="fn-steps">' + body + '</div>'
+    + ((insight || compare)
+        ? '<div class="fn-foot"><div class="fn-insight">' + insight + '</div>'
+          + '<div class="fn-compare">' + compare + '</div></div>'
+        : '');
+
+  el.querySelectorAll('.fn-toggle button').forEach(b => {
+    b.addEventListener('click', () => { FN_CHANNEL = b.dataset.fn; renderFunnel(m); });
+  });
+}
+
 function renderList(elId, items, emptyMsg, variant) {
   const el = document.getElementById(elId);
   if (!items || !items.length) { el.innerHTML = emptyPanel(emptyMsg); return; }
@@ -473,6 +586,7 @@ function setMonth(key) {
   renderSite(m, prev);
   renderSeo(m, prev);
   renderMaps(m, prev);
+  renderFunnel(m);
   const hlWrap = document.getElementById('highlights-section');
   if (hlWrap) hlWrap.style.display = (m.highlights && m.highlights.length) ? '' : 'none';
   renderList('highlights', m.highlights, 'No highlights logged for this month.');
@@ -523,7 +637,10 @@ async function init() {
       DATA.months.slice().reverse()
         .map(m => `<button id="btn-${m.key}" onclick="setMonth('${m.key}')">${m.label}</button>`).join('');
 
-    const d = new Date(DATA.updated_at);
+    /* A missing updated_at made new Date(null) fall back to the epoch and the footer
+       read "Updated 1 Jan 1970" on every client that never had one set. Drop the clause
+       rather than print a date we don't have. */
+    const d = DATA.updated_at ? new Date(DATA.updated_at) : null;
     /* Only name Business Profile as a source when a month actually carries Maps data,
        so a client without a tracked profile isn't told we used a source we didn't. */
     const hasMaps = DATA.months.some(m => m.maps);
@@ -531,8 +648,9 @@ async function init() {
       ? 'Google Ads, Meta Ads & GA4'
       : 'Google Ads, Meta Ads, GA4, Search Console & SE Ranking')
       + (hasMaps ? ' & Google Business Profile' : '');
-    document.getElementById('foot').textContent = sources + ' · Updated ' +
-      d.toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' });
+    const stamp = (d && !isNaN(d)) ? ' · Updated ' +
+      d.toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' }) : '';
+    document.getElementById('foot').textContent = sources + stamp;
 
     setMonth(DATA.months[DATA.months.length - 1].key);
   } catch (e) {
