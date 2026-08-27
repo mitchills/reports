@@ -454,8 +454,10 @@ function renderFunnel(m) {
   const el   = document.getElementById('funnel');
   const f    = m.funnel;
 
+  const note = document.getElementById('funnel-note');
   if (!f || !f.channels || !f.channels.length) {
     if (wrap) wrap.style.display = 'none';
+    if (note) note.textContent = '';
     if (el) el.innerHTML = '';
     return;
   }
@@ -474,7 +476,14 @@ function renderFunnel(m) {
                  'Sessions that reached the ' + system + ' booking page',
                  'Confirmed ' + system + ' appointments, not enquiries or button clicks'];
   const BARS  = ['#B7AC97', '#17140E', '#8A6F3E', '#C29A50'];
-  const ACTS  = ['reached the website', 'opened the booking page', 'finished booking'];
+  const ACTS  = ['clicked through to the website', 'opened the booking page', 'finished booking'];
+
+  /* This funnel is the ONLINE booking path only. People who ring or fill in the contact
+     form leave it at Website visits and never come back, so without this line the drop
+     to the booking page reads as pure loss. */
+  if (note) note.textContent = 'The online booking path only. Phone calls and contact form '
+    + 'enquiries leave this funnel at Website visits, and both are counted in the Website '
+    + 'section above.';
 
   /* Bars use a log scale. 47,861 impressions and 9 bookings can't share a linear one —
      every step below the first renders as an invisible sliver. The log gives the taper;
