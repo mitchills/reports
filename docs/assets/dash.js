@@ -482,8 +482,7 @@ function renderFunnel(m) {
      form leave it at Website visits and never come back, so without this line the drop
      to the booking page reads as pure loss. */
   if (note) note.textContent = 'The online booking path only. Phone calls and contact form '
-    + 'enquiries leave this funnel at Website visits, and both are counted in the Website '
-    + 'section above.';
+    + 'enquiries leave this funnel at Website visits. Both are counted in the Website section.';
 
   /* Bars use a log scale. 47,861 impressions and 9 bookings can't share a linear one —
      every step below the first renders as an invisible sliver. The log gives the taper;
