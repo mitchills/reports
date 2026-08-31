@@ -315,15 +315,27 @@ function renderSeo(m, prev) {
      appear, but only where they did NOT fall — otherwise widening the range
      would smuggle decliners onto the page through the back door, which is the
      one thing this rule exists to prevent. */
-  const kwEl = document.getElementById('rankings');
-  const all = (m.rankings || []).filter(r => has(r.position) && r.position > 0);
-  if (!all.length) {
+  const kwEl   = document.getElementById('rankings');
+  const tracked = m.rankings || [];
+  const all     = tracked.filter(r => has(r.position) && r.position > 0);
+
+  /* PER-CLIENT OPT-IN (DATA.rankings_show_all, set in that client's data.json).
+     When on, the panel lists EVERY tracked keyword a page at a time instead of the
+     curated slice below — including the ones that fell and the ones holding no
+     top-100 position at all. Absent or false keeps the original behaviour, which
+     is what every other client's dashboard still renders. Only turn it on for a
+     client who has agreed to see the full list: on most accounts a third or more
+     of tracked keywords do not rank yet, and a wall of "Not in top 100" reads as
+     failure rather than as scope. */
+  const showAll = !!(DATA && DATA.rankings_show_all);
+
+  if (!(showAll ? tracked.length : all.length)) {
     kwEl.innerHTML = emptyPanel('No keyword ranking data recorded for this month.');
     return;
   }
 
   const JUMP = 3, GAIN = 1, TOP = 3, GOOD_POS = 10, HELD_POS = 30,
-        MIN_VOL = 50, NEW_POS = 20, MAX_ROWS = 14;
+        MIN_VOL = 50, NEW_POS = 20, MAX_ROWS = 14, PAGE_SIZE = 15;
   const fell = r => has(r.movement) && r.movement < 0;
   const qualifies = r =>
        (has(r.movement) && r.movement >= GAIN)                       // gained ground, however small
@@ -332,33 +344,63 @@ function renderSeo(m, prev) {
     || (r.position <= HELD_POS && (r.volume || 0) >= MIN_VOL && !fell(r))  // holding a respectable spot
     || (r.is_new && r.position <= NEW_POS);                          // new win worth showing
 
-  const rows = all.filter(qualifies).sort((a, b) => {
+  const byStanding = (a, b) => {
     const am = (has(a.movement) && a.movement >= JUMP) ? 1 : 0;
     const bm = (has(b.movement) && b.movement >= JUMP) ? 1 : 0;
     if (am !== bm) return bm - am;              // jumps lead
     return a.position - b.position;             // then best positions
-  }).slice(0, MAX_ROWS);
+  };
 
-  const hidden = all.length - rows.length;
+  let rows, note;
+  if (showAll) {
+    /* Ranked terms first, best standing first, then everything holding no top-100
+       position — biggest search volume first, so the most valuable gaps read first. */
+    const unranked = tracked.filter(r => !(has(r.position) && r.position > 0))
+                            .sort((a, b) => (b.volume || 0) - (a.volume || 0));
+    rows = all.slice().sort(byStanding).concat(unranked);
+    note = `All <strong>${rows.length}</strong> keywords we track for you. ` +
+           `<strong>${all.length}</strong> currently hold a position in Google's top 100.`;
+  } else {
+    rows = all.filter(qualifies).sort(byStanding).slice(0, MAX_ROWS);
+    const hidden = all.length - rows.length;
+    note = hidden > 0 ? `Showing ${rows.length} of ${all.length} ranking keywords —
+       top positions, biggest movers and new entries.` : '';
+  }
 
   /* Volume drives WHICH keywords qualify above, but is deliberately not displayed —
      reported local search volumes badly understate reality (SE Ranking has
      "gladesville podiatrist" at 0/mo), so showing them undersells a #1 ranking. */
-  kwEl.innerHTML = '<table class="tbl"><thead><tr><th>Keyword</th>' +
-    '<th class="r">Position</th><th class="r">Movement</th></tr></thead><tbody>' +
-    rows.map(r => {
-      const jumped = has(r.movement) && r.movement >= JUMP;
-      let mv = '<span class="mv-flat">—</span>';
-      if (r.is_new)                                    mv = '<span class="tag tag-new">new</span>';
-      else if (has(r.movement) && r.movement > 0)      mv = `<span class="mv-up">↑ ${r.movement}</span>`;
-      else if (has(r.movement) && r.movement < 0)      mv = `<span class="mv-down">↓ ${Math.abs(r.movement)}</span>`;
-      return `<tr class="${jumped ? 'row-jumped' : ''}">
-        <td class="kw">${r.keyword}${jumped ? ' <span class="tag tag-good">big jump</span>' : ''}</td>
-        <td class="r pos">#${r.position}</td>
-        <td class="r">${mv}</td></tr>`;
-    }).join('') + '</tbody></table>' +
-    (hidden > 0 ? `<div class="table-note">Showing ${rows.length} of ${all.length} ranking keywords —
-       top positions, biggest movers and new entries.</div>` : '');
+  const rowHTML = r => {
+    const isRanked = has(r.position) && r.position > 0;
+    const jumped   = isRanked && has(r.movement) && r.movement >= JUMP;
+    let mv = '<span class="mv-flat">—</span>';
+    if (isRanked) {
+      if (r.is_new)                                  mv = '<span class="tag tag-new">new</span>';
+      else if (has(r.movement) && r.movement > 0)    mv = `<span class="mv-up">↑ ${r.movement}</span>`;
+      else if (has(r.movement) && r.movement < 0)    mv = `<span class="mv-down">↓ ${Math.abs(r.movement)}</span>`;
+    }
+    return `<tr class="${jumped ? 'row-jumped' : ''}">
+      <td class="kw">${r.keyword}${jumped ? ' <span class="tag tag-good">big jump</span>' : ''}</td>
+      <td class="r pos">${isRanked ? '#' + r.position : '<span class="kw-unranked">Not in top 100</span>'}</td>
+      <td class="r">${mv}</td></tr>`;
+  };
+
+  /* Paging is client-side over data already on the page, so "show more" never
+     refetches and the month toggle repaints from the top. */
+  let shown = showAll ? Math.min(PAGE_SIZE, rows.length) : rows.length;
+  const paint = () => {
+    const left = rows.length - shown;
+    kwEl.innerHTML = '<table class="tbl"><thead><tr><th>Keyword</th>' +
+      '<th class="r">Position</th><th class="r">Movement</th></tr></thead><tbody>' +
+      rows.slice(0, shown).map(rowHTML).join('') + '</tbody></table>' +
+      (note ? `<div class="table-note">${note}</div>` : '') +
+      (left > 0 ? `<div class="kw-more"><button type="button" id="kw-more-btn">` +
+                  `Show ${Math.min(PAGE_SIZE, left)} more <span>(${left} to go)</span>` +
+                  `</button></div>` : '');
+    const btn = document.getElementById('kw-more-btn');
+    if (btn) btn.addEventListener('click', () => { shown += PAGE_SIZE; paint(); });
+  };
+  paint();
 }
 
 /* ─── 4. GOOGLE MAPS (Google Business Profile) — a separate surface to the website.
