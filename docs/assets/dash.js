@@ -341,12 +341,14 @@ function renderSeo(m, prev) {
     return;
   }
 
-  /* FACETS — auto-detected, never configured. A client whose rankings carry
-     `location` (a postcode/clinic) or `cluster` (a service group) gets a row of
-     filter chips for each; every other client has neither field, so nothing
-     renders and their panel is untouched. A term tracked in four postcodes is
-     four rows, one per postcode, which is why filtering matters here. */
-  const facetVals = key => [...new Set(tracked.map(r => r[key]).filter(Boolean))].sort();
+  /* FACETS — opt-in per client via DATA.rankings_facets. When on, rankings that
+     carry `location` (a postcode/clinic) or `cluster` (a service group) get a row
+     of filter chips each. Deliberately NOT auto-detected off the fields alone:
+     a client can carry cluster tags for reporting without wanting the filter on
+     their page, so switching it on stays a decision, not a side effect. */
+  const showFacets = !!(DATA && DATA.rankings_facets);
+  const facetVals = key => !showFacets ? []
+    : [...new Set(tracked.map(r => r[key]).filter(Boolean))].sort();
   const locs = facetVals('location'), clusters = facetVals('cluster');
   if (KW_LOC !== KW_ALL && !locs.includes(KW_LOC))         KW_LOC = KW_ALL;
   if (KW_CLUSTER !== KW_ALL && !clusters.includes(KW_CLUSTER)) KW_CLUSTER = KW_ALL;
