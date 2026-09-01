@@ -302,18 +302,31 @@ function renderSeo(m, prev) {
        index). Only shown when captured for that month — it's a live snapshot, so never
        backfill an older month with today's figure. */
     const kw = s && s.keywords_ranking, pkw = ps && ps.keywords_ranking;
+    /* A tile with no source is HIDDEN, not dashed. Three of these come only from
+       Search Console, and a client we have no GSC access for was rendering a row of
+       em-dashes that read as broken rather than as absent. Where SE Ranking holds a
+       genuine equivalent it gets its OWN tile and its own label — never the GSC
+       label, because "Avg. position" from tracked keywords and from Search Console
+       are different measures and must not be read as the same number. */
+    const tile = (label, val, d, note) => has(val) ? kpiHTML(label, val, d, note) : '';
     el.innerHTML = '<div class="kpi-row strip">' +
-      kpiHTML('Organic sessions', (o && has(o.sessions)) ? num(o.sessions) : '—',
+      tile('Organic sessions', (o && has(o.sessions)) ? num(o.sessions) : null,
               delta(o && o.sessions, po && po.sessions, true)) +
-      kpiHTML('Search impressions', (s && has(s.impressions)) ? num(s.impressions) : '—',
+      tile('Search impressions', (s && has(s.impressions)) ? num(s.impressions) : null,
               delta(s && s.impressions, ps && ps.impressions, true)) +
       /* lower position number = better, so this delta is inverted */
-      kpiHTML('Avg. position', (s && has(s.avg_position)) ? s.avg_position.toFixed(1) : '—',
+      tile('Avg. position', (s && has(s.avg_position)) ? s.avg_position.toFixed(1) : null,
               delta(s && s.avg_position, ps && ps.avg_position, false)) +
+      tile('Avg. position (tracked)',
+              (s && has(s.avg_position_tracked)) ? s.avg_position_tracked.toFixed(1) : null,
+              delta(s && s.avg_position_tracked, ps && ps.avg_position_tracked, false),
+              'across tracked keywords') +
       (has(kw) ? kpiHTML('Keywords ranking', num(kw), delta(kw, pkw, true),
               (s && has(s.keywords_top10)) ? `${num(s.keywords_top10)} in top 10` : '') : '') +
-      kpiHTML('Pages ranking', (s && has(s.ranked_pages)) ? num(s.ranked_pages) : '—',
+      tile('Pages ranking', (s && has(s.ranked_pages)) ? num(s.ranked_pages) : null,
               delta(s && s.ranked_pages, ps && ps.ranked_pages, true)) +
+      tile('Pages indexed', (s && has(s.pages_indexed)) ? num(s.pages_indexed) : null,
+              delta(s && s.pages_indexed, ps && ps.pages_indexed, true), 'in Google') +
       '</div>';
   }
 
