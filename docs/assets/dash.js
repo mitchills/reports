@@ -4,6 +4,13 @@
 
 let DATA = null;
 
+/* Keyword facet selection. Only used by clients whose rankings carry `location`
+   and/or `cluster` (e.g. a multi-site clinic tracking the same term in several
+   postcodes). Selection persists while the month toggle is used, and falls back
+   to ALL when the chosen value is absent from the month being shown. */
+const KW_ALL = 'All';
+let KW_LOC = KW_ALL, KW_CLUSTER = KW_ALL;
+
 /* ─── formatters ─── */
 const aud  = n => '$' + Math.round(n).toLocaleString('en-AU');
 const aud2 = n => '$' + n.toFixed(2);
@@ -329,10 +336,24 @@ function renderSeo(m, prev) {
      failure rather than as scope. */
   const showAll = !!(DATA && DATA.rankings_show_all);
 
-  if (!(showAll ? tracked.length : all.length)) {
+  if (!tracked.length || (!showAll && !all.length)) {
     kwEl.innerHTML = emptyPanel('No keyword ranking data recorded for this month.');
     return;
   }
+
+  /* FACETS — auto-detected, never configured. A client whose rankings carry
+     `location` (a postcode/clinic) or `cluster` (a service group) gets a row of
+     filter chips for each; every other client has neither field, so nothing
+     renders and their panel is untouched. A term tracked in four postcodes is
+     four rows, one per postcode, which is why filtering matters here. */
+  const facetVals = key => [...new Set(tracked.map(r => r[key]).filter(Boolean))].sort();
+  const locs = facetVals('location'), clusters = facetVals('cluster');
+  if (KW_LOC !== KW_ALL && !locs.includes(KW_LOC))         KW_LOC = KW_ALL;
+  if (KW_CLUSTER !== KW_ALL && !clusters.includes(KW_CLUSTER)) KW_CLUSTER = KW_ALL;
+
+  const inFacet = r => (KW_LOC === KW_ALL || r.location === KW_LOC)
+                    && (KW_CLUSTER === KW_ALL || r.cluster === KW_CLUSTER);
+  const scoped = (locs.length || clusters.length) ? tracked.filter(inFacet) : tracked;
 
   const JUMP = 3, GAIN = 1, TOP = 3, GOOD_POS = 10, HELD_POS = 30,
         MIN_VOL = 50, NEW_POS = 20, MAX_ROWS = 14, PAGE_SIZE = 15;
@@ -351,19 +372,25 @@ function renderSeo(m, prev) {
     return a.position - b.position;             // then best positions
   };
 
+  const ranked = scoped.filter(r => has(r.position) && r.position > 0);
+
   let rows, note;
   if (showAll) {
     /* Ranked terms first, best standing first, then everything holding no top-100
        position — biggest search volume first, so the most valuable gaps read first. */
-    const unranked = tracked.filter(r => !(has(r.position) && r.position > 0))
-                            .sort((a, b) => (b.volume || 0) - (a.volume || 0));
-    rows = all.slice().sort(byStanding).concat(unranked);
-    note = `All <strong>${rows.length}</strong> keywords we track for you. ` +
-           `<strong>${all.length}</strong> currently hold a position in Google's top 100.`;
+    const unranked = scoped.filter(r => !(has(r.position) && r.position > 0))
+                           .sort((a, b) => (b.volume || 0) - (a.volume || 0));
+    rows = ranked.slice().sort(byStanding).concat(unranked);
+    const scope = (KW_LOC === KW_ALL && KW_CLUSTER === KW_ALL)
+      ? 'keywords we track for you'
+      : `keywords in ${[KW_CLUSTER !== KW_ALL ? KW_CLUSTER : null,
+                        KW_LOC !== KW_ALL ? KW_LOC : null].filter(Boolean).join(' · ')}`;
+    note = `<strong>${rows.length}</strong> ${scope}. ` +
+           `<strong>${ranked.length}</strong> currently hold a position in Google's top 100.`;
   } else {
-    rows = all.filter(qualifies).sort(byStanding).slice(0, MAX_ROWS);
-    const hidden = all.length - rows.length;
-    note = hidden > 0 ? `Showing ${rows.length} of ${all.length} ranking keywords —
+    rows = ranked.filter(qualifies).sort(byStanding).slice(0, MAX_ROWS);
+    const hidden = ranked.length - rows.length;
+    note = hidden > 0 ? `Showing ${rows.length} of ${ranked.length} ranking keywords —
        top positions, biggest movers and new entries.` : '';
   }
 
@@ -387,18 +414,37 @@ function renderSeo(m, prev) {
 
   /* Paging is client-side over data already on the page, so "show more" never
      refetches and the month toggle repaints from the top. */
+  const chipRow = (label, values, current, kind) => values.length < 2 ? '' :
+    `<div class="kw-facet"><span class="kw-facet-label">${label}</span>` +
+    [KW_ALL].concat(values).map(v =>
+      `<button type="button" class="${v === current ? 'active' : ''}"
+         data-kind="${kind}" data-val="${v.replace(/"/g, '&quot;')}">${v}</button>`).join('') +
+    '</div>';
+
   let shown = showAll ? Math.min(PAGE_SIZE, rows.length) : rows.length;
   const paint = () => {
     const left = rows.length - shown;
-    kwEl.innerHTML = '<table class="tbl"><thead><tr><th>Keyword</th>' +
-      '<th class="r">Position</th><th class="r">Movement</th></tr></thead><tbody>' +
-      rows.slice(0, shown).map(rowHTML).join('') + '</tbody></table>' +
-      (note ? `<div class="table-note">${note}</div>` : '') +
-      (left > 0 ? `<div class="kw-more"><button type="button" id="kw-more-btn">` +
-                  `Show ${Math.min(PAGE_SIZE, left)} more <span>(${left} to go)</span>` +
-                  `</button></div>` : '');
+    kwEl.innerHTML =
+      chipRow('Postcode', locs, KW_LOC, 'loc') +
+      chipRow('Service', clusters, KW_CLUSTER, 'cluster') +
+      (rows.length
+        ? '<table class="tbl"><thead><tr><th>Keyword</th>' +
+          '<th class="r">Position</th><th class="r">Movement</th></tr></thead><tbody>' +
+          rows.slice(0, shown).map(rowHTML).join('') + '</tbody></table>' +
+          (note ? `<div class="table-note">${note}</div>` : '') +
+          (left > 0 ? `<div class="kw-more"><button type="button" id="kw-more-btn">` +
+                      `Show ${Math.min(PAGE_SIZE, left)} more <span>(${left} to go)</span>` +
+                      `</button></div>` : '')
+        : '<div class="table-note">No keywords tracked for that combination.</div>');
     const btn = document.getElementById('kw-more-btn');
     if (btn) btn.addEventListener('click', () => { shown += PAGE_SIZE; paint(); });
+    kwEl.querySelectorAll('.kw-facet button').forEach(b => {
+      b.addEventListener('click', () => {
+        if (b.dataset.kind === 'loc') KW_LOC = b.dataset.val;
+        else                          KW_CLUSTER = b.dataset.val;
+        renderSeo(m, prev);            // re-filter and reset paging to page one
+      });
+    });
   };
   paint();
 }
