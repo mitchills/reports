@@ -368,6 +368,9 @@ function renderSeo(m, prev) {
      a client can carry cluster tags for reporting without wanting the filter on
      their page, so switching it on stays a decision, not a side effect. */
   const showFacets = !!(DATA && DATA.rankings_facets);
+  /* Label for the location chip row. Defaults to 'Postcode' (Elite HP tracks by
+     postcode); clients tracking suburbs or clinics override via facet_labels. */
+  const LOC_LABEL = (DATA && DATA.facet_labels && DATA.facet_labels.location) || 'Postcode';
   const facetVals = key => !showFacets ? []
     : [...new Set(tracked.map(r => r[key]).filter(Boolean))].sort();
   const locs = facetVals('location'), clusters = facetVals('cluster');
@@ -448,7 +451,7 @@ function renderSeo(m, prev) {
   const paint = () => {
     const left = rows.length - shown;
     kwEl.innerHTML =
-      chipRow('Postcode', locs, KW_LOC, 'loc') +
+      chipRow(LOC_LABEL, locs, KW_LOC, 'loc') +
       chipRow('Service', clusters, KW_CLUSTER, 'cluster') +
       (rows.length
         ? '<table class="tbl"><thead><tr><th>Keyword</th>' +
