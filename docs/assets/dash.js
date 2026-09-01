@@ -327,7 +327,15 @@ function renderSeo(m, prev) {
               delta(s && s.ranked_pages, ps && ps.ranked_pages, true)) +
       tile('Pages indexed', (s && has(s.pages_indexed)) ? num(s.pages_indexed) : null,
               delta(s && s.pages_indexed, ps && ps.pages_indexed, true), 'in Google') +
-      '</div>';
+      '</div>' +
+      /* Optional plain-English line under the SEO strip, set per month as
+         `organic_note` in that client's data.json. Purely additive and opt-in:
+         absent on every other client, so their pages render exactly as before.
+         Use it to say WHERE a movement sits — which page, which share of the
+         total. Never to assert a CAUSE we have not proven; an unexplained
+         movement is a question, and saying so is more trustworthy than a
+         tidy story that turns out to be wrong. */
+      (m.organic_note ? `<div class="table-note">${m.organic_note}</div>` : '');
   }
 
   /* Which keywords make the cut. A keyword earns its place by RANKING WELL,
