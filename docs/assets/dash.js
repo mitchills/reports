@@ -124,7 +124,7 @@ function renderPaid(m, prev) {
   const t = tot(g, mt), pt = tot(pg, pm);
 
   /* one big card: total value + delta, split pills underneath */
-  const card = (label, key, fmt, better, extra) => {
+  const card = (label, key, fmt, better, extra, pills2) => {
     const val = t && t[key];
     const d   = delta(val, pt && pt[key], better);
     const split = [
@@ -137,7 +137,27 @@ function renderPaid(m, prev) {
       <div class="card-delta ${d.cls}">${d.str}${extra || ''}</div>
       <div class="split">${split.map(s =>
         `<span class="split-pill"><b>${fmt(s.v)}</b> ${s.name}</span>`).join('')}</div>
+      ${pills2 || ''}
     </div>`;
+  };
+
+  /* OPTIONAL conversion-type split — platforms may carry `conversions_by_type`
+     (e.g. {"Bookings": 30, "Enquiries": 4}) and it is summed across them, so a
+     clinic can see appointments booked apart from people still just asking.
+     Rendered ONLY when the types reconcile to the conversions total: a partial
+     split reads as if the unaccounted conversions never happened, which is worse
+     than showing no split at all. Absent on every client that doesn't set it. */
+  const typePills = () => {
+    const acc = {};
+    [g, mt].forEach(p => {
+      const byType = p && p.conversions_by_type;
+      if (byType) for (const k in byType) if (has(byType[k])) acc[k] = (acc[k] || 0) + byType[k];
+    });
+    const names = Object.keys(acc);
+    if (!names.length || !t) return '';
+    if (names.reduce((n, k) => n + acc[k], 0) !== t.conversions) return '';
+    return `<div class="split">${names.map(k =>
+      `<span class="split-pill"><b>${num(acc[k])}</b> ${k}</span>`).join('')}</div>`;
   };
 
   let targetTag = '';
@@ -147,7 +167,7 @@ function renderPaid(m, prev) {
   }
 
   el.innerHTML = '<div class="card-row">' +
-    card('Conversions',         'conversions', num,  true)  +
+    card('Conversions',         'conversions', num,  true,  '', typePills()) +
     card('Cost per conversion', 'cpa',         aud2, false, targetTag) +
     card('Spend',               'spend',       aud,  null)  +
     '</div>';
