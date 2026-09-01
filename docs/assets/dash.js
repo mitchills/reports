@@ -188,16 +188,24 @@ function renderServices(m, prev) {
     const card = (label, key, fmt, better) => {
       const val = t[key];
       const d   = delta(val, pt && pt[key], better);
+      /* Each platform carries its OWN month-on-month change, not just the combined
+         total — a location can hold steady overall while Google and Meta move in
+         opposite directions, and that is exactly the thing worth acting on. */
       const split = [
-        { name:'Google', v: g  && g[key] },
-        { name:'Meta',   v: mt && mt[key] }
+        { name:'Google', v: g  && g[key],  p: pg && pg[key] },
+        { name:'Meta',   v: mt && mt[key], p: pm && pm[key] }
       ].filter(s => has(s.v));
       return `<div class="card">
         <div class="card-label">${label}</div>
         <div class="card-value">${has(val) ? fmt(val) : '<span class="na">no data</span>'}</div>
         <div class="card-delta ${d.cls}">${d.str}</div>
-        <div class="split">${split.map(s =>
-          `<span class="split-pill"><b>${fmt(s.v)}</b> ${s.name}</span>`).join('')}</div>
+        <div class="split">${split.map(s => {
+          const sd = delta(s.v, s.p, better);
+          const real = sd.str && sd.str !== '—';
+          return `<span class="split-pill"><b>${fmt(s.v)}</b> ${s.name}` +
+                 (real ? `<i class="split-delta ${sd.cls}">${sd.str}</i>` : '') +
+                 '</span>';
+        }).join('')}</div>
       </div>`;
     };
 
