@@ -10,7 +10,7 @@
   <!-- ?v= is a cache-buster. dash.css/dash.js are shared across every client, so a
        browser holding an old copy shows a stale design. Bump v on both links after
        any change to the shared assets, then re-run `make encrypt`. -->
-  <link rel="stylesheet" href="../assets/dash.css?v=8">
+  <link rel="stylesheet" href="../assets/dash.css?v=9">
 </head>
 <body>
 <div class="wrap">
@@ -45,6 +45,13 @@
 
   <div class="section-label">Paid Advertising</div>
   <div class="panel"><div id="paid"></div></div>
+
+  <!-- Per-service breakdown. renderServices hides this whole block unless the
+       month carries a "services" object, so a client without one sees nothing. -->
+  <div id="services-section">
+    <div class="section-label">By Service</div>
+    <div class="panel"><div id="services"></div></div>
+  </div>
 
   <div id="seo-section">
     <div class="section-label">SEO</div>
@@ -84,6 +91,6 @@
   <p class="foot" id="foot"></p>
 
 </div>
-<script src="../assets/dash.js?v=8"></script>
+<script src="../assets/dash.js?v=9"></script>
 </body>
 </html>
