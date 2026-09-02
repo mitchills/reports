@@ -127,16 +127,24 @@ function renderPaid(m, prev) {
   const card = (label, key, fmt, better, extra, pills2) => {
     const val = t && t[key];
     const d   = delta(val, pt && pt[key], better);
+    /* Each platform carries its own prior-month value so the pill can show whether
+       THAT platform moved. The card total alone hides an offsetting split — Meta up
+       and Google down can net to "flat", which reads as nothing happening. */
     const split = [
-      { name:'Google', v: g  && g[key] },
-      { name:'Meta',   v: mt && mt[key] }
+      { name:'Google', v: g  && g[key],  p: pg && pg[key] },
+      { name:'Meta',   v: mt && mt[key], p: pm && pm[key] }
     ].filter(s => has(s.v));
     return `<div class="card">
       <div class="card-label">${label}</div>
       <div class="card-value">${has(val) ? fmt(val) : '<span class="na">no data</span>'}</div>
       <div class="card-delta ${d.cls}">${d.str}${extra || ''}</div>
-      <div class="split">${split.map(s =>
-        `<span class="split-pill"><b>${fmt(s.v)}</b> ${s.name}</span>`).join('')}</div>
+      <div class="split">${split.map(s => {
+        const sd = delta(s.v, s.p, better);
+        const real = sd.str && sd.str !== '—';
+        return `<span class="split-pill"><b>${fmt(s.v)}</b> ${s.name}` +
+               (real ? `<i class="split-delta ${sd.cls}">${sd.str}</i>` : '') +
+               '</span>';
+      }).join('')}</div>
       ${pills2 || ''}
     </div>`;
   };
@@ -270,7 +278,14 @@ function renderSite(m, prev) {
     bigCard('Engagement rate', has(g.engagement_rate) ? (g.engagement_rate * 100).toFixed(1) + '%'
                                                       : '<span class="na">no data</span>',
             delta(g.engagement_rate, p && p.engagement_rate, true)) +
-    '</div>';
+    '</div>' +
+    /* Optional plain-English line under the traffic cards, set per month as
+       `traffic_note` in that client's data.json. Same contract as `organic_note`:
+       purely additive, absent on every other client. Sessions and conversions
+       moving together usually means a spend change, not a website problem — say
+       which, because a red arrow with no explanation reads as bad news either way.
+       Never assert a cause we have not established. */
+    (m.traffic_note ? `<div class="table-note">${m.traffic_note}</div>` : '');
 
   /* comparison column: match rows to last month by name */
   const cmp = (val, prevVal, better) => {
