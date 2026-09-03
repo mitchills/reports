@@ -448,10 +448,20 @@ function renderSeo(m, prev) {
     || (r.position <= HELD_POS && (r.volume || 0) >= MIN_VOL && !fell(r))  // holding a respectable spot
     || (r.is_new && r.position <= NEW_POS);                          // new win worth showing
 
+  /* PER-CLIENT OPT-IN (DATA.rankings_sort, set in that client's data.json).
+     'position' orders purely by best standing, so a keyword sitting at #1 leads the
+     table instead of falling below a #30 that happened to jump. Meant to pair with
+     rankings_show_all: "jumps lead" is right for a curated highlights list, but on a
+     full list of every tracked term it reads as a broken sort. Absent or any other
+     value keeps the original highlights-first ordering every other client renders. */
+  const sortByPosition = !!(DATA && DATA.rankings_sort === 'position');
+
   const byStanding = (a, b) => {
-    const am = (has(a.movement) && a.movement >= JUMP) ? 1 : 0;
-    const bm = (has(b.movement) && b.movement >= JUMP) ? 1 : 0;
-    if (am !== bm) return bm - am;              // jumps lead
+    if (!sortByPosition) {
+      const am = (has(a.movement) && a.movement >= JUMP) ? 1 : 0;
+      const bm = (has(b.movement) && b.movement >= JUMP) ? 1 : 0;
+      if (am !== bm) return bm - am;            // jumps lead
+    }
     return a.position - b.position;             // then best positions
   };
 
