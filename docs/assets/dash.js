@@ -471,7 +471,10 @@ function renderSeo(m, prev) {
      only the searches where the site actually appeared), so a GSC-derived figure
      is tagged `avg` and the impression count sits beside it as the missing
      denominator. Requires rankings_gsc for those columns to be present. */
-  const gscFallback = showGsc && !!(DATA && DATA.rankings_gsc_fallback);
+  /* Independent of rankings_gsc: the fallback fills the Position cell, the columns
+     are a separate display choice, and a client can want the truer position without
+     the extra columns. Both read the same gsc_* fields on each ranking row. */
+  const gscFallback = !!(DATA && DATA.rankings_gsc_fallback);
   /* Tracker position if there is one, else the GSC average where impressions back
      it up. Drives both the Position cell and the sort, so a term Google shows at
      #12 sorts among the ranked rows rather than sinking to the bottom. */
