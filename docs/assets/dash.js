@@ -414,9 +414,23 @@ function renderSeo(m, prev) {
   /* Label for the location chip row. Defaults to 'Postcode' (Elite HP tracks by
      postcode); clients tracking suburbs or clinics override via facet_labels. */
   const LOC_LABEL = (DATA && DATA.facet_labels && DATA.facet_labels.location) || 'Postcode';
+  /* Label for the cluster chip row. Defaults to 'Service' (a dental or allied-health
+     clinic groups keywords by treatment); clients grouping by topic or programme
+     type override via facet_labels.cluster. */
+  const CLU_LABEL = (DATA && DATA.facet_labels && DATA.facet_labels.cluster) || 'Service';
   const facetVals = key => !showFacets ? []
     : [...new Set(tracked.map(r => r[key]).filter(Boolean))].sort();
   const locs = facetVals('location'), clusters = facetVals('cluster');
+  /* A term tracked in more than one location yields one row per location, which
+     reads as a duplicate while the location chip is on ALL. Tag just those rows
+     with their location so two different positions for one term make sense. */
+  const seenIn = new Map();
+  tracked.forEach(r => {
+    if (!r.location) return;
+    if (!seenIn.has(r.keyword)) seenIn.set(r.keyword, new Set());
+    seenIn.get(r.keyword).add(r.location);
+  });
+  const multiLoc = new Set([...seenIn].filter(([, s]) => s.size > 1).map(([k]) => k));
   if (KW_LOC !== KW_ALL && !locs.includes(KW_LOC))         KW_LOC = KW_ALL;
   if (KW_CLUSTER !== KW_ALL && !clusters.includes(KW_CLUSTER)) KW_CLUSTER = KW_ALL;
 
@@ -476,7 +490,10 @@ function renderSeo(m, prev) {
       else if (has(r.movement) && r.movement < 0)    mv = `<span class="mv-down">↓ ${Math.abs(r.movement)}</span>`;
     }
     return `<tr class="${jumped ? 'row-jumped' : ''}">
-      <td class="kw">${r.keyword}${jumped ? ' <span class="tag tag-good">big jump</span>' : ''}</td>
+      <td class="kw">${r.keyword}${
+        KW_LOC === KW_ALL && r.location && multiLoc.has(r.keyword)
+          ? ` <span class="tag tag-loc">${r.location}</span>` : ''
+      }${jumped ? ' <span class="tag tag-good">big jump</span>' : ''}</td>
       <td class="r pos">${isRanked ? '#' + r.position : '<span class="kw-unranked">Not in top 100</span>'}</td>
       <td class="r">${mv}</td></tr>`;
   };
@@ -495,7 +512,7 @@ function renderSeo(m, prev) {
     const left = rows.length - shown;
     kwEl.innerHTML =
       chipRow(LOC_LABEL, locs, KW_LOC, 'loc') +
-      chipRow('Service', clusters, KW_CLUSTER, 'cluster') +
+      chipRow(CLU_LABEL, clusters, KW_CLUSTER, 'cluster') +
       (rows.length
         ? '<table class="tbl"><thead><tr><th>Keyword</th>' +
           '<th class="r">Position</th><th class="r">Movement</th></tr></thead><tbody>' +
