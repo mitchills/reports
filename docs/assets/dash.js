@@ -463,6 +463,27 @@ function renderSeo(m, prev) {
      nowhere, as a muted "seen at ~#n" under Not in top 100, where the impression
      count sitting next to it supplies the missing context. */
   const showGsc = !!(DATA && DATA.rankings_gsc);
+  /* PER-CLIENT OPT-IN (DATA.rankings_gsc_fallback). Where the rank tracker finds
+     the site nowhere in the top 100 but Search Console recorded real impressions,
+     show Google's own average position instead of "Not in top 100" — which is
+     flatly untrue for a term Google served at #12. The two are different
+     measurements (the tracker checks one localised results page; GSC averages
+     only the searches where the site actually appeared), so a GSC-derived figure
+     is tagged `avg` and the impression count sits beside it as the missing
+     denominator. Requires rankings_gsc for those columns to be present. */
+  const gscFallback = showGsc && !!(DATA && DATA.rankings_gsc_fallback);
+  /* Tracker position if there is one, else the GSC average where impressions back
+     it up. Drives both the Position cell and the sort, so a term Google shows at
+     #12 sorts among the ranked rows rather than sinking to the bottom. */
+  /* Floor on impressions before a GSC average counts as a position. An average over
+     one or two appearances is not a ranking: without this, a term seen twice all month
+     surfaces as "#1 avg" at the top of the client's table, above a genuine #1 held on
+     hundreds of impressions. Below the floor the row stays "Not in top 100". */
+  const MIN_GSC_IMPR = 10;
+  const gscPos = r => (gscFallback && !(has(r.position) && r.position > 0)
+                       && has(r.gsc_position) && (r.gsc_impressions || 0) >= MIN_GSC_IMPR)
+                       ? Math.round(r.gsc_position) : null;
+  const effPos = r => (has(r.position) && r.position > 0) ? r.position : gscPos(r);
 
   const byStanding = (a, b) => {
     if (!sortByPosition) {
@@ -470,24 +491,30 @@ function renderSeo(m, prev) {
       const bm = (has(b.movement) && b.movement >= JUMP) ? 1 : 0;
       if (am !== bm) return bm - am;            // jumps lead
     }
-    return a.position - b.position;             // then best positions
+    return (effPos(a) || 1e6) - (effPos(b) || 1e6);   // then best standing
   };
 
   const ranked = scoped.filter(r => has(r.position) && r.position > 0);
+  /* Rows carrying a position from EITHER source. With the fallback off this is just
+     `ranked`, so every other client's counts and ordering are unchanged. */
+  const placed = scoped.filter(r => effPos(r));
 
   let rows, note;
   if (showAll) {
-    /* Ranked terms first, best standing first, then everything holding no top-100
-       position — biggest search volume first, so the most valuable gaps read first. */
-    const unranked = scoped.filter(r => !(has(r.position) && r.position > 0))
+    /* Terms holding a position first, best standing first, then everything appearing
+       nowhere — biggest search volume first, so the most valuable gaps read first. */
+    const unranked = scoped.filter(r => !effPos(r))
                            .sort((a, b) => (b.volume || 0) - (a.volume || 0));
-    rows = ranked.slice().sort(byStanding).concat(unranked);
+    rows = placed.slice().sort(byStanding).concat(unranked);
     const scope = (KW_LOC === KW_ALL && KW_CLUSTER === KW_ALL)
       ? 'keywords we track for you'
       : `keywords in ${[KW_CLUSTER !== KW_ALL ? KW_CLUSTER : null,
                         KW_LOC !== KW_ALL ? KW_LOC : null].filter(Boolean).join(' · ')}`;
     note = `<strong>${rows.length}</strong> ${scope}. ` +
-           `<strong>${ranked.length}</strong> currently hold a position in Google's top 100.`;
+           `<strong>${placed.length}</strong> currently hold a position in Google's top 100.` +
+           (gscFallback && placed.length > ranked.length
+             ? ` Positions tagged <span class="tag tag-avg">avg</span> come from Search Console —
+                Google's own average across the searches you appeared in.` : '');
   } else {
     /* PER-CLIENT OPT-IN (DATA.rankings_show_ranked, set in that client's data.json).
        Shows EVERY keyword holding a top-100 position, while still hiding the ones
@@ -522,9 +549,9 @@ function renderSeo(m, prev) {
         KW_LOC === KW_ALL && r.location && multiLoc.has(r.keyword)
           ? ` <span class="tag tag-loc">${r.location}</span>` : ''
       }${jumped ? ' <span class="tag tag-good">big jump</span>' : ''}</td>
-      <td class="r pos">${isRanked ? '#' + r.position : '<span class="kw-unranked">Not in top 100</span>'
-        + (showGsc && has(r.gsc_position) && r.gsc_impressions
-             ? `<span class="kw-seen">seen at ~#${Math.round(r.gsc_position)}</span>` : '')}</td>
+      <td class="r pos">${isRanked ? '#' + r.position
+        : (gscPos(r) ? `#${gscPos(r)} <span class="tag tag-avg">avg</span>`
+                     : '<span class="kw-unranked">Not in top 100</span>')}</td>
       <td class="r">${mv}</td>${showGsc ? `
       <td class="r">${has(r.gsc_impressions) ? r.gsc_impressions.toLocaleString() : '—'}</td>
       <td class="r">${has(r.gsc_clicks) ? r.gsc_clicks.toLocaleString() : '—'}</td>` : ''}</tr>`;
