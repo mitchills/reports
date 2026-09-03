@@ -481,7 +481,17 @@ function renderSeo(m, prev) {
     note = `<strong>${rows.length}</strong> ${scope}. ` +
            `<strong>${ranked.length}</strong> currently hold a position in Google's top 100.`;
   } else {
-    rows = ranked.filter(qualifies).sort(byStanding).slice(0, MAX_ROWS);
+    /* PER-CLIENT OPT-IN (DATA.rankings_show_ranked, set in that client's data.json).
+       Shows EVERY keyword holding a top-100 position, while still hiding the ones
+       that rank nowhere. The default `qualifies` filter is tuned for a highlights
+       card: it drops anything that slipped or sits past #30, which on a soft month
+       can leave a single row and read as though tracking is broken rather than as
+       a quiet month. Absent or false keeps the curated behaviour every other client
+       renders. Use it where a client wants the honest ranked list without the wall
+       of "Not in top 100" that rankings_show_all brings. */
+    const showRanked = !!(DATA && DATA.rankings_show_ranked);
+    rows = (showRanked ? ranked.slice() : ranked.filter(qualifies))
+             .sort(byStanding).slice(0, MAX_ROWS);
     const hidden = ranked.length - rows.length;
     note = hidden > 0 ? `Showing ${rows.length} of ${ranked.length} ranking keywords —
        top positions, biggest movers and new entries.` : '';
