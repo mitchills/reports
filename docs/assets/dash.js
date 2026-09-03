@@ -455,6 +455,14 @@ function renderSeo(m, prev) {
      full list of every tracked term it reads as a broken sort. Absent or any other
      value keeps the original highlights-first ordering every other client renders. */
   const sortByPosition = !!(DATA && DATA.rankings_sort === 'position');
+  /* PER-CLIENT OPT-IN (DATA.rankings_gsc). Adds Search Console impressions and
+     clicks beside each tracked keyword. Counts, never averages: GSC's average
+     position is computed only over the searches where the site actually appeared,
+     so publishing it as "Position" reads as "we rank 10th" for a term the client
+     surfaces on a fraction of searches. It is shown ONLY on rows the tracker finds
+     nowhere, as a muted "seen at ~#n" under Not in top 100, where the impression
+     count sitting next to it supplies the missing context. */
+  const showGsc = !!(DATA && DATA.rankings_gsc);
 
   const byStanding = (a, b) => {
     if (!sortByPosition) {
@@ -514,8 +522,12 @@ function renderSeo(m, prev) {
         KW_LOC === KW_ALL && r.location && multiLoc.has(r.keyword)
           ? ` <span class="tag tag-loc">${r.location}</span>` : ''
       }${jumped ? ' <span class="tag tag-good">big jump</span>' : ''}</td>
-      <td class="r pos">${isRanked ? '#' + r.position : '<span class="kw-unranked">Not in top 100</span>'}</td>
-      <td class="r">${mv}</td></tr>`;
+      <td class="r pos">${isRanked ? '#' + r.position : '<span class="kw-unranked">Not in top 100</span>'
+        + (showGsc && has(r.gsc_position) && r.gsc_impressions
+             ? `<span class="kw-seen">seen at ~#${Math.round(r.gsc_position)}</span>` : '')}</td>
+      <td class="r">${mv}</td>${showGsc ? `
+      <td class="r">${has(r.gsc_impressions) ? r.gsc_impressions.toLocaleString() : '—'}</td>
+      <td class="r">${has(r.gsc_clicks) ? r.gsc_clicks.toLocaleString() : '—'}</td>` : ''}</tr>`;
   };
 
   /* Paging is client-side over data already on the page, so "show more" never
@@ -535,7 +547,9 @@ function renderSeo(m, prev) {
       chipRow(CLU_LABEL, clusters, KW_CLUSTER, 'cluster') +
       (rows.length
         ? '<table class="tbl"><thead><tr><th>Keyword</th>' +
-          '<th class="r">Position</th><th class="r">Movement</th></tr></thead><tbody>' +
+          '<th class="r">Position</th><th class="r">Movement</th>' +
+          (showGsc ? '<th class="r">Impressions</th><th class="r">Clicks</th>' : '') +
+          '</tr></thead><tbody>' +
           rows.slice(0, shown).map(rowHTML).join('') + '</tbody></table>' +
           (note ? `<div class="table-note">${note}</div>` : '') +
           (left > 0 ? `<div class="kw-more"><button type="button" id="kw-more-btn">` +

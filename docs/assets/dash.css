@@ -255,3 +255,5 @@ h1::after { content:""; display:block; width:36px; height:2px;
   .fn-gap { flex-wrap:wrap; }
 }
 @media (prefers-reduced-motion:reduce) { .fn-fill { transition:none; } }
+
+.kw-seen { display:block; color:var(--faint); font-weight:400; font-size:.85em; }
