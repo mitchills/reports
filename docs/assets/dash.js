@@ -207,7 +207,7 @@ function campaignTypesTable(m, prev) {
   const sum = (arr, k) => arr.reduce((t, r) => t + (r[k] || 0), 0);
   const tc = sum(rows, 'conversions'), ts = sum(rows, 'spend');
   return `<table class="tbl" style="margin-top:20px"><thead><tr><th>Campaign type (Meta)</th>
-      <th class="r">Conversions</th><th class="r">Cost per conversion</th><th class="r">Spend</th></tr></thead>
+      <th class="r">Conversions</th><th class="r">Cost per</th><th class="r">Spend</th></tr></thead>
     <tbody>${body}
       <tr style="font-weight:600"><td>Meta total</td><td class="r">${num(tc)}</td>
       <td class="r">${tc > 0 ? aud2(ts / tc) : '—'}</td><td class="r">${aud(ts)}</td></tr>
@@ -269,7 +269,7 @@ function servicesTable(m, prev) {
     // blank spacer row between services so each block reads as its own group
     '<tr><td colspan="4" style="padding:7px 0;border-bottom:none"></td></tr>');
   return `<table class="tbl" style="margin-top:20px"><thead><tr><th>Service</th>
-      <th class="r">Conversions</th><th class="r">Cost per conversion</th><th class="r">Spend</th></tr></thead>
+      <th class="r">Conversions</th><th class="r">Cost per</th><th class="r">Spend</th></tr></thead>
     <tbody>${rows}</tbody></table>`;
 }
 
