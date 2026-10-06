@@ -238,45 +238,35 @@ function renderServices(m, prev) {
     return { spend, conversions: conv, cpa: conv > 0 ? spend / conv : null };
   };
 
-  el.innerHTML = Object.keys(services).map(name => {
+  /* COMPACT TABLE (was one card trio per service, which ran to a full screen for three
+     services). One bold row per service, then a quiet Google row and Meta row beneath
+     it, so each platform's own month-on-month change is still visible. */
+  const chg = (v, p, better) => {
+    const d = delta(v, p, better);
+    return d.str === '—' ? '' :
+      ` <span class="${d.cls}" style="font-size:11px;margin-left:6px">${d.str}</span>`;
+  };
+  const cpaOf = o => has(o.cpa) ? o.cpa : (o.conversions > 0 ? o.spend / o.conversions : null);
+  const val = (v, fmt, p, better) => (has(v) ? fmt(v) : '—') + chg(v, p, better);
+  const line = (label, o, po, head) => `<tr${head ? ' style="font-weight:600"' : ''}>
+      <td${head ? '' : ' style="padding-left:40px;color:var(--muted);font-size:13px"'}>${label}</td>
+      <td class="r" style="white-space:nowrap">${val(o.conversions, num, po && po.conversions, true)}</td>
+      <td class="r" style="white-space:nowrap">${val(cpaOf(o), aud2, po && cpaOf(po), false)}</td>
+      <td class="r" style="white-space:nowrap">${val(o.spend, aud, po && po.spend, null)}</td></tr>`;
+  const rows = Object.keys(services).map(name => {
     const svc  = services[name];
     const psvc = pServices && pServices[name];
     const g = svc.google_ads, mt = svc.meta_ads;
     const pg = psvc && psvc.google_ads, pm = psvc && psvc.meta_ads;
     const t = tot(g, mt), pt = tot(pg, pm);
     if (!t) return '';
-
-    const card = (label, key, fmt, better) => {
-      const val = t[key];
-      const d   = delta(val, pt && pt[key], better);
-      /* Each platform carries its OWN month-on-month change, not just the combined
-         total — a location can hold steady overall while Google and Meta move in
-         opposite directions, and that is exactly the thing worth acting on. */
-      const split = [
-        { name:'Google', v: g  && g[key],  p: pg && pg[key] },
-        { name:'Meta',   v: mt && mt[key], p: pm && pm[key] }
-      ].filter(s => has(s.v));
-      return `<div class="card">
-        <div class="card-label">${label}</div>
-        <div class="card-value">${has(val) ? fmt(val) : '<span class="na">no data</span>'}</div>
-        <div class="card-delta ${d.cls}">${d.str}</div>
-        <div class="split">${split.map(s => {
-          const sd = delta(s.v, s.p, better);
-          const real = sd.str && sd.str !== '—';
-          return `<span class="split-pill"><b>${fmt(s.v)}</b> ${s.name}` +
-                 (real ? `<i class="split-delta ${sd.cls}">${sd.str}</i>` : '') +
-                 '</span>';
-        }).join('')}</div>
-      </div>`;
-    };
-
-    return `<div class="sub-label">${name}</div>
-      <div class="card-row">
-        ${card('Conversions',         'conversions', num,  true)}
-        ${card('Cost per conversion', 'cpa',         aud2, false)}
-        ${card('Spend',               'spend',       aud,  null)}
-      </div>`;
+    return line(name, t, pt, true) +
+           (g  ? line('Google', g,  pg, false) : '') +
+           (mt ? line('Meta',   mt, pm, false) : '');
   }).join('');
+  el.innerHTML = `<table class="tbl"><thead><tr><th>Service</th>
+      <th class="r">Conversions</th><th class="r">Cost per conversion</th><th class="r">Spend</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
 }
 
 /* ─── 2. WEBSITE (GA4) — three separate panels so traffic, conversions and pages
