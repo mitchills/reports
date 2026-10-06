@@ -513,7 +513,9 @@ function renderSeo(m, prev) {
       ? 'keywords we track for you'
       : `keywords in ${[KW_CLUSTER !== KW_ALL ? KW_CLUSTER : null,
                         KW_LOC !== KW_ALL ? KW_LOC : null].filter(Boolean).join(' · ')}`;
-    note = `<strong>${rows.length}</strong> ${scope}. ` +
+    /* PER-CLIENT OPT-IN (DATA.rankings_hide_note): drops the "N keywords we track /
+       N hold a position" footer. Absent or false keeps it for every other client. */
+    note = (DATA && DATA.rankings_hide_note) ? '' : `<strong>${rows.length}</strong> ${scope}. ` +
            `<strong>${placed.length}</strong> currently hold a position in Google's top 100.` +
            (gscFallback && placed.length > ranked.length
              ? ` Positions tagged <span class="tag tag-avg">avg</span> come from Search Console —
