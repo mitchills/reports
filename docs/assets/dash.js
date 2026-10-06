@@ -178,7 +178,7 @@ function renderPaid(m, prev) {
     card('Conversions',         'conversions', num,  true,  '', typePills()) +
     card('Cost per conversion', 'cpa',         aud2, false, targetTag) +
     card('Spend',               'spend',       aud,  null)  +
-    '</div>' + campaignTypesTable(m, prev);
+    '</div>' + campaignTypesTable(m, prev) + servicesTable(m, prev);
 }
 
 /* Optional breakdown inside the Paid Advertising card (DATA month key `campaign_types`:
@@ -220,16 +220,18 @@ function campaignTypesTable(m, prev) {
    the section div exists in every client's shell so the shared JS never hits a
    missing element, but stays display:none until data shows up. ─── */
 function renderServices(m, prev) {
+  /* The per-service breakdown now lives INSIDE the Paid Advertising card
+     (servicesTable, called from renderPaid). The old standalone "By Service"
+     section stays hidden so clients whose shell still has it show nothing twice. */
   const wrap = document.getElementById('services-section');
   const el   = document.getElementById('services');
-  if (!wrap || !el) return;               // defensive — shell out of date
-  const services = m.services, pServices = prev && prev.services;
+  if (wrap) wrap.style.display = 'none';
+  if (el) el.innerHTML = '';
+}
 
-  if (!services || !Object.keys(services).length) {
-    wrap.style.display = 'none'; el.innerHTML = '';
-    return;
-  }
-  wrap.style.display = '';
+function servicesTable(m, prev) {
+  const services = m.services, pServices = prev && prev.services;
+  if (!services || !Object.keys(services).length) return '';
 
   const tot = (a, b) => {
     if (!a && !b) return null;
@@ -263,8 +265,10 @@ function renderServices(m, prev) {
     return line(name, t, pt, true) +
            (g  ? line('Google', g,  pg, false) : '') +
            (mt ? line('Meta',   mt, pm, false) : '');
-  }).join('');
-  el.innerHTML = `<table class="tbl"><thead><tr><th>Service</th>
+  }).filter(Boolean).join(
+    // blank spacer row between services so each block reads as its own group
+    '<tr><td colspan="4" style="padding:7px 0;border-bottom:none"></td></tr>');
+  return `<table class="tbl" style="margin-top:20px"><thead><tr><th>Service</th>
       <th class="r">Conversions</th><th class="r">Cost per conversion</th><th class="r">Spend</th></tr></thead>
     <tbody>${rows}</tbody></table>`;
 }
