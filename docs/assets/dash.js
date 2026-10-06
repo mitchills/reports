@@ -178,7 +178,40 @@ function renderPaid(m, prev) {
     card('Conversions',         'conversions', num,  true,  '', typePills()) +
     card('Cost per conversion', 'cpa',         aud2, false, targetTag) +
     card('Spend',               'spend',       aud,  null)  +
-    '</div>';
+    '</div>' + campaignTypesTable(m, prev);
+}
+
+/* Optional breakdown inside the Paid Advertising card (DATA month key `campaign_types`:
+   [{name, conversions, spend, cpa}]). For clients running different campaign types
+   (e.g. website bookings vs lead forms) whose cost per result differs on purpose, so
+   one blended figure hides what each is doing. Absent = renders nothing. Each row's
+   change is against the same-named row last month. */
+function campaignTypesTable(m, prev) {
+  const rows = m.campaign_types;
+  if (!rows || !rows.length) return '';
+  const pBy = {};
+  ((prev && prev.campaign_types) || []).forEach(r => pBy[r.name] = r);
+  const chg = (v, p, better) => {
+    const d = delta(v, p, better);
+    return d.str === '—' ? '' :
+      ` <span class="${d.cls}" style="font-size:11px;margin-left:6px">${d.str}</span>`;
+  };
+  const cell = (v, fmt, p, better) => (has(v) ? fmt(v) : '—') + chg(v, p, better);
+  const body = rows.map(r => {
+    const p = pBy[r.name] || {};
+    return `<tr><td>${r.name}</td>
+      <td class="r">${cell(r.conversions, num, p.conversions, true)}</td>
+      <td class="r">${cell(r.cpa, aud2, p.cpa, false)}</td>
+      <td class="r">${cell(r.spend, aud, p.spend, null)}</td></tr>`;
+  }).join('');
+  const sum = (arr, k) => arr.reduce((t, r) => t + (r[k] || 0), 0);
+  const tc = sum(rows, 'conversions'), ts = sum(rows, 'spend');
+  return `<table class="tbl" style="margin-top:20px"><thead><tr><th>Campaign type (Meta)</th>
+      <th class="r">Conversions</th><th class="r">Cost per conversion</th><th class="r">Spend</th></tr></thead>
+    <tbody>${body}
+      <tr style="font-weight:600"><td>Meta total</td><td class="r">${num(tc)}</td>
+      <td class="r">${tc > 0 ? aud2(ts / tc) : '—'}</td><td class="r">${aud(ts)}</td></tr>
+    </tbody></table>`;
 }
 
 /* ─── 1b. PAID BY SERVICE — optional. Multi-service clinics (e.g. a clinic running
