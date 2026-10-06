@@ -193,24 +193,24 @@ function campaignTypesTable(m, prev) {
   ((prev && prev.campaign_types) || []).forEach(r => pBy[r.name] = r);
   const chg = (v, p, better) => {
     const d = delta(v, p, better);
-    return d.str === '—' ? '' :
-      ` <span class="${d.cls}" style="font-size:11px;margin-left:6px">${d.str}</span>`;
+    const none = d.str === '—';
+    return `<span class="${none ? '' : d.cls}" style="display:inline-block;width:66px;text-align:left;margin-left:8px;font-size:11px">${none ? '' : d.str}</span>`;
   };
-  const cell = (v, fmt, p, better) => (has(v) ? fmt(v) : '—') + chg(v, p, better);
+  const cell = (v, fmt, p, better) => '<span style="display:inline-block;min-width:66px;text-align:right">' + (has(v) ? fmt(v) : '—') + '</span>' + chg(v, p, better);
   const body = rows.map(r => {
     const p = pBy[r.name] || {};
     return `<tr><td>${r.name}</td>
-      <td class="r">${cell(r.conversions, num, p.conversions, true)}</td>
-      <td class="r">${cell(r.cpa, aud2, p.cpa, false)}</td>
-      <td class="r">${cell(r.spend, aud, p.spend, null)}</td></tr>`;
+      <td class="r" style="white-space:nowrap;padding-left:8px;padding-right:16px">${cell(r.conversions, num, p.conversions, true)}</td>
+      <td class="r" style="white-space:nowrap;padding-left:8px;padding-right:16px">${cell(r.cpa, aud2, p.cpa, false)}</td>
+      <td class="r" style="white-space:nowrap;padding-left:8px;padding-right:16px">${cell(r.spend, aud, p.spend, null)}</td></tr>`;
   }).join('');
   const sum = (arr, k) => arr.reduce((t, r) => t + (r[k] || 0), 0);
   const tc = sum(rows, 'conversions'), ts = sum(rows, 'spend');
   return `<table class="tbl" style="margin-top:20px"><thead><tr><th>Campaign type (Meta)</th>
-      <th class="r">Conversions</th><th class="r">Cost per</th><th class="r">Spend</th></tr></thead>
+      <th class="r" style="width:180px;padding-left:8px;padding-right:16px">Conversions</th><th class="r" style="width:180px;padding-left:8px;padding-right:16px">Cost per</th><th class="r" style="width:180px;padding-left:8px;padding-right:16px">Spend</th></tr></thead>
     <tbody>${body}
-      <tr style="font-weight:600"><td>Meta total</td><td class="r">${num(tc)}</td>
-      <td class="r">${tc > 0 ? aud2(ts / tc) : '—'}</td><td class="r">${aud(ts)}</td></tr>
+      <tr style="font-weight:600"><td>Meta total</td><td class="r" style="white-space:nowrap;padding-left:8px;padding-right:16px">${num(tc)}</td>
+      <td class="r" style="white-space:nowrap;padding-left:8px;padding-right:16px">${tc > 0 ? aud2(ts / tc) : '—'}</td><td class="r" style="white-space:nowrap;padding-left:8px;padding-right:16px">${aud(ts)}</td></tr>
     </tbody></table>`;
 }
 
@@ -245,16 +245,16 @@ function servicesTable(m, prev) {
      it, so each platform's own month-on-month change is still visible. */
   const chg = (v, p, better) => {
     const d = delta(v, p, better);
-    return d.str === '—' ? '' :
-      ` <span class="${d.cls}" style="font-size:11px;margin-left:6px">${d.str}</span>`;
+    const none = d.str === '—';
+    return `<span class="${none ? '' : d.cls}" style="display:inline-block;width:66px;text-align:left;margin-left:8px;font-size:11px">${none ? '' : d.str}</span>`;
   };
   const cpaOf = o => has(o.cpa) ? o.cpa : (o.conversions > 0 ? o.spend / o.conversions : null);
-  const val = (v, fmt, p, better) => (has(v) ? fmt(v) : '—') + chg(v, p, better);
+  const val = (v, fmt, p, better) => '<span style="display:inline-block;min-width:66px;text-align:right">' + (has(v) ? fmt(v) : '—') + '</span>' + chg(v, p, better);
   const line = (label, o, po, head) => `<tr${head ? ' style="font-weight:600"' : ''}>
       <td${head ? '' : ' style="padding-left:40px;color:var(--muted);font-size:13px"'}>${label}</td>
-      <td class="r" style="white-space:nowrap">${val(o.conversions, num, po && po.conversions, true)}</td>
-      <td class="r" style="white-space:nowrap">${val(cpaOf(o), aud2, po && cpaOf(po), false)}</td>
-      <td class="r" style="white-space:nowrap">${val(o.spend, aud, po && po.spend, null)}</td></tr>`;
+      <td class="r" style="white-space:nowrap;padding-left:8px;padding-right:16px">${val(o.conversions, num, po && po.conversions, true)}</td>
+      <td class="r" style="white-space:nowrap;padding-left:8px;padding-right:16px">${val(cpaOf(o), aud2, po && cpaOf(po), false)}</td>
+      <td class="r" style="white-space:nowrap;padding-left:8px;padding-right:16px">${val(o.spend, aud, po && po.spend, null)}</td></tr>`;
   const rows = Object.keys(services).map(name => {
     const svc  = services[name];
     const psvc = pServices && pServices[name];
@@ -269,7 +269,7 @@ function servicesTable(m, prev) {
     // blank spacer row between services so each block reads as its own group
     '<tr><td colspan="4" style="padding:7px 0;border-bottom:none"></td></tr>');
   return `<table class="tbl" style="margin-top:20px"><thead><tr><th>Service</th>
-      <th class="r">Conversions</th><th class="r">Cost per</th><th class="r">Spend</th></tr></thead>
+      <th class="r" style="width:180px;padding-left:8px;padding-right:16px">Conversions</th><th class="r" style="width:180px;padding-left:8px;padding-right:16px">Cost per</th><th class="r" style="width:180px;padding-left:8px;padding-right:16px">Spend</th></tr></thead>
     <tbody>${rows}</tbody></table>`;
 }
 
