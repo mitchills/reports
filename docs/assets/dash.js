@@ -268,7 +268,7 @@ function servicesTable(m, prev) {
   }).filter(Boolean).join(
     // blank spacer row between services so each block reads as its own group
     '<tr><td colspan="4" style="padding:7px 0;border-bottom:none"></td></tr>');
-  return `<table class="tbl" style="margin-top:20px"><thead><tr><th>Service</th>
+  return `<table class="tbl" style="margin-top:20px"><thead><tr><th>${(DATA && DATA.services_label) || 'Service'}</th>
       <th class="r" style="width:180px;padding-left:8px;padding-right:16px">Conversions</th><th class="r" style="width:180px;padding-left:8px;padding-right:16px">Cost per</th><th class="r" style="width:180px;padding-left:8px;padding-right:16px">Spend</th></tr></thead>
     <tbody>${rows}</tbody></table>`;
 }
