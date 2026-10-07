@@ -680,6 +680,27 @@ function renderMaps(m, prev) {
   if (!g) { if (wrap) wrap.style.display = 'none'; el.innerHTML = ''; return; }
   if (wrap) wrap.style.display = '';
 
+  /* MULTI-LOCATION — opt-in via maps.locations: [{name, impressions_maps, …, coverage}].
+     The combined strip stays on top (the top-level fields are the stored totals), then
+     each venue gets its own strip and its own map-pack lines. Last month is matched by
+     name, so a venue that is new this month simply shows no deltas. Clients without
+     maps.locations render exactly as before. */
+  const locs = Array.isArray(g.locations) ? g.locations.filter(l => l && l.name) : [];
+  if (!locs.length) { el.innerHTML = mapsBlockHTML(g, p, true); return; }
+  const prevLoc = {};
+  ((p && p.locations) || []).forEach(l => { if (l && l.name) prevLoc[l.name] = l; });
+  const label = t => `<div class="sub-label" style="padding:18px 24px 0;margin:0">${t}</div>`;
+  let out = label('All locations') + mapsBlockHTML(g, p, false);
+  locs.forEach(l => {
+    out += '<div style="border-top:1px solid var(--line)"></div>' + label(l.name) +
+           mapsBlockHTML(l, prevLoc[l.name] || null, true);
+  });
+  el.innerHTML = out;
+}
+
+/* One Business Profile strip (+ optional map-pack lines) for a single set of fields:
+   either the combined totals or one venue from maps.locations. */
+function mapsBlockHTML(g, p, withCoverage) {
   /* VIEWS = Maps-surface + Search-surface impressions, shown as ONE number.
      data.json keeps them separate (the split matters in /seo-deep-dive, where the two
      surfaces routinely move in opposite directions) but the client dashboard must not
@@ -719,7 +740,7 @@ function renderMaps(m, prev) {
      Same qualification rule as keyword rankings: a term earns its line by holding real
      coverage or by JUMPING, never by dropping. Nothing qualifying means no line at all,
      which is honest — not a 0% line that reads as a failure report. */
-  const cov = (g.coverage || []).filter(c =>
+  const cov = (withCoverage ? (g.coverage || []) : []).filter(c =>
     has(c.top3_points) && has(c.grid_points) && c.grid_points > 0);
   if (cov.length) {
     const pct   = c => c.top3_points / c.grid_points;
@@ -745,7 +766,7 @@ function renderMaps(m, prev) {
     }
   }
 
-  el.innerHTML = out;
+  return out;
 }
 
 /* ─── SEARCH TERMS — optional (m.search_terms), shown after Keyword Rankings.
