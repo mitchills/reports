@@ -977,6 +977,22 @@ function renderList(elId, items, emptyMsg, variant) {
                + items.map(li).join('') + '</ul></div>';
 }
 
+/* Optional "What's Next" list. The section is built on the fly, so only a month that
+   carries a `plan` shows it and no page shell has to change. */
+function renderPlan(m) {
+  let wrap = document.getElementById('plan-section');
+  if (!m.plan || !m.plan.length) { if (wrap) wrap.style.display = 'none'; return; }
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'plan-section';
+    wrap.innerHTML = '<div class="section-label">What\'s Next</div>'
+                   + '<div class="panel"><div id="plan"></div></div>';
+    document.getElementById('completed').closest('.panel').after(wrap);
+  }
+  wrap.style.display = '';
+  renderList('plan', m.plan);
+}
+
 /* ─── month switch ─── */
 function setMonth(key) {
   const idx  = DATA.months.findIndex(m => m.key === key);
@@ -1001,6 +1017,7 @@ function setMonth(key) {
   if (hlWrap) hlWrap.style.display = (m.highlights && m.highlights.length) ? '' : 'none';
   renderList('highlights', m.highlights, 'No highlights logged for this month.');
   renderList('completed',  m.completed,  'No completed work logged for this month.', 'done');
+  renderPlan(m);
 }
 
 /* ─── bootstrap ─── */
