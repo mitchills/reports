@@ -354,28 +354,36 @@ function renderSite(m, prev) {
 }
 
 /* Optional Website sub-blocks: where visitors are (ga4.locations) and which other
-   sites sent them (ga4.referrals, a rolling 6-month total ending that month). Each block only shows when the month carries
+   sites sent them (ga4.referrals, the top 20 sites over a rolling 6 months ending that month). Each block only shows when the month carries
    that list AND the client's shell has the matching div, so every other client is
    untouched. Conversions are session-based, on the same basis as ga4.conversions. */
 function renderGeoReferrals(m, prev) {
   const g = m.ga4 || {}, p = (prev && prev.ga4) || {};
-  const block = (blockId, elId, rows, prevRows, keyName, label, fmtKey, noCmp) => {
+  const block = (blockId, elId, rows, prevRows, keyName, label, fmtKey, noCmp, limit) => {
     const blk = document.getElementById(blockId), el = document.getElementById(elId);
     if (!blk || !el) return;
     if (!rows || !rows.length) { blk.style.display = 'none'; return; }
     blk.style.display = '';
     const prevBy = {};
     (prevRows || []).forEach(r => prevBy[r[keyName]] = r.sessions);
+    /* conversions are null when we couldn't verify the client's conversion events;
+       hide the column outright rather than print a column of "no data" */
+    const hasConv = rows.some(r => has(r.conversions));
+    const extra = limit && rows.length > limit ? rows.length - limit : 0;
     el.innerHTML = `<table class="tbl"><thead><tr><th>${label}</th>` +
-      '<th class="r">Sessions</th><th class="r">Conversions</th>' +
+      '<th class="r">Sessions</th>' + (hasConv ? '<th class="r">Conversions</th>' : '') +
       (noCmp ? '' : '<th class="r">vs last month</th>') + '</tr></thead><tbody>' +
-      rows.map(r => {
+      rows.map((r, i) => {
         const d = delta(r.sessions, prevBy[r[keyName]], true);
-        return `<tr><td${fmtKey ? ' class="page-path"' : ''}>${r[keyName]}</td>` +
+        return `<tr${extra && i >= limit ? ' class="geo-more" style="display:none"' : ''}>` +
+          `<td${fmtKey ? ' class="page-path"' : ''}>${r[keyName]}</td>` +
           `<td class="r">${num(r.sessions)}</td>` +
-          `<td class="r">${has(r.conversions) ? num(r.conversions) : '<span class="na">no data</span>'}</td>` +
+          (hasConv ? `<td class="r">${has(r.conversions) ? num(r.conversions) : '<span class="na">no data</span>'}</td>` : '') +
           (noCmp ? '' : `<td class="r"><span class="${d.cls}">${d.str}</span></td>`) + '</tr>';
-      }).join('') + '</tbody></table>';
+      }).join('') + '</tbody></table>' +
+      (extra ? `<div class="table-note"><a href="#" style="color:inherit;text-decoration:underline;font-weight:600" onclick="this.closest('.panel').querySelectorAll('.geo-more')` +
+               `.forEach(t => t.style.display = ''); this.parentNode.remove(); return false;">` +
+               `Show all ${rows.length} websites</a></div>` : '');
   };
   block('site-locations-block', 'site-locations', g.locations, p.locations, 'city', 'City', false);
   /* referrals are a rolling 6-month total (low volume per month), so a
