@@ -748,6 +748,43 @@ function renderMaps(m, prev) {
   el.innerHTML = out;
 }
 
+/* ─── SOCIAL — optional (m.social). Platform figures come from Meta Business Suite
+   screenshots/exports, which only show rounded values ("510.1K"), so `value` is stored
+   as the exact string Meta displays and `change` is Meta's own % vs the previous 30 days.
+   Never rebuild a precise number from a rounded one. The website row is GA4 Organic
+   Social and compares against last month's social.website like every other block. ─── */
+function renderSocial(m, prev) {
+  const wrap = document.getElementById('social-section');
+  const el   = document.getElementById('social');
+  if (!wrap || !el) return;
+  const s = m.social;
+  if (!s || (!(s.platforms || []).length && !s.website)) { wrap.style.display = 'none'; el.innerHTML = ''; return; }
+  wrap.style.display = '';
+  const chg = c => !has(c) ? { cls:'delta-flat', str:'' }
+    : c > 0 ? { cls:'delta-up',   str:'↑ +' + c + '%' }
+    : c < 0 ? { cls:'delta-down', str:'↓ ' + Math.abs(c) + '%' }
+            : { cls:'delta-flat', str:'—' };
+  let out = '';
+  (s.platforms || []).forEach(pl => {
+    const fol = has(pl.followers) ? ` · ${num(pl.followers)} followers` : '';
+    out += `<div class="table-note"><strong>${pl.name}</strong>${fol}</div>` +
+      '<div class="kpi-row strip">' +
+      (pl.metrics || []).map(x => kpiHTML(x.label, x.value, chg(x.change))).join('') + '</div>';
+  });
+  const w = s.website, pw = prev && prev.social && prev.social.website;
+  if (w) {
+    out += '<div class="table-note"><strong>Website visits from social</strong></div>' +
+      '<div class="kpi-row strip">' +
+      kpiHTML('Visits', has(w.sessions) ? num(w.sessions) : '—', delta(w.sessions, pw && pw.sessions, true)) +
+      kpiHTML('From Facebook', has(w.facebook) ? num(w.facebook) : '—', delta(w.facebook, pw && pw.facebook, true)) +
+      kpiHTML('From Instagram', has(w.instagram) ? num(w.instagram) : '—', delta(w.instagram, pw && pw.instagram, true)) +
+      kpiHTML('Enquiries', has(w.conversions) ? num(w.conversions) : '—', delta(w.conversions, pw && pw.conversions, true)) +
+      '</div>';
+  }
+  if (s.note) out += `<div class="table-note">${s.note}</div>`;
+  el.innerHTML = out;
+}
+
 /* ─── comment lists — items are strings, or {text, url} for links ─── */
 /* variant 'done' swaps the gold star for a gold tick — completed work is
    shipped work, not a win, and marking it with a star oversells it. */
@@ -901,6 +938,7 @@ function setMonth(key) {
   renderSite(m, prev);
   renderSeo(m, prev);
   renderMaps(m, prev);
+  renderSocial(m, prev);
   renderFunnel(m);
   const hlWrap = document.getElementById('highlights-section');
   if (hlWrap) hlWrap.style.display = (m.highlights && m.highlights.length) ? '' : 'none';

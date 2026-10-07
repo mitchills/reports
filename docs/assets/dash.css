@@ -200,6 +200,8 @@ h1::after { content:""; display:block; width:36px; height:2px;
   /* 2 x 150px eats a phone's width, so the label column keeps room to breathe */
   .tbl th.r, .tbl td.r { width:88px; }
   .cell-val { font-size:16px; }
+  /* Social has 6 stats per platform; one per row makes the section a long scroll */
+  #social .kpi { flex:1 1 50%; }
 }
 
 /* ─── Booking funnel ───────────────────────────────────────────────────────
