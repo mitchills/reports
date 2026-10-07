@@ -748,6 +748,41 @@ function renderMaps(m, prev) {
   el.innerHTML = out;
 }
 
+/* ─── SEARCH TERMS — optional (m.search_terms), shown after Keyword Rankings.
+   The non-brand service searches (e.g. "physio coorparoo") that brought the most clicks
+   that month, straight from Search Console: [{keyword, clinic, clicks, position}].
+   Position is GSC's impression-weighted AVERAGE across all searchers, so it's labelled
+   as such and never mixed into the rank-tracker table above. Movement compares against
+   the same keyword in last month's search_terms; absent there = a dash, never a guess.
+   Only renders on a page whose shell carries #search-terms-section. ─── */
+function renderSearchTerms(m, prev) {
+  const wrap = document.getElementById('search-terms-section');
+  const el   = document.getElementById('search-terms');
+  if (!wrap || !el) return;
+  const rows = (m.search_terms || []).filter(r => has(r.clicks));
+  if (!rows.length) { wrap.style.display = 'none'; el.innerHTML = ''; return; }
+  wrap.style.display = '';
+  const prevPos = {};
+  ((prev && prev.search_terms) || []).forEach(r => { if (has(r.position)) prevPos[r.keyword] = r.position; });
+  const rowHTML = r => {
+    const was = prevPos[r.keyword];
+    const mvN = (has(r.position) && has(was)) ? Math.round(was - r.position) : null;
+    const mv  = !has(mvN) || mvN === 0 ? '<span class="mv-flat">—</span>'
+              : mvN > 0 ? `<span class="mv-up">↑ ${mvN}</span>`
+                        : `<span class="mv-down">↓ ${Math.abs(mvN)}</span>`;
+    return `<tr><td class="kw">${r.keyword}${r.clinic ? ` <span class="tag tag-loc">${r.clinic}</span>` : ''}</td>
+      <td class="r">${num(r.clicks)}</td>
+      <td class="r pos">${has(r.position) ? '#' + r.position.toFixed(1) : '—'}</td>
+      <td class="r">${mv}</td></tr>`;
+  };
+  el.innerHTML = '<table class="tbl"><thead><tr><th>Search</th><th class="r">Clicks</th>' +
+    '<th class="r">Avg position</th><th class="r">Movement</th></tr></thead><tbody>' +
+    rows.slice().sort((a, b) => b.clicks - a.clicks).map(rowHTML).join('') + '</tbody></table>' +
+    '<div class="table-note">Searches for your services (not your clinic name) that brought ' +
+    'the most clicks from Google this month. Position is Google&rsquo;s average across everyone ' +
+    'who searched, from Search Console.</div>';
+}
+
 /* ─── SOCIAL — optional (m.social). Platform figures come from Meta Business Suite
    screenshots/exports, which only show rounded values ("510.1K"), so `value` is stored
    as the exact string Meta displays and `change` is Meta's own % vs the previous 30 days.
@@ -938,6 +973,7 @@ function setMonth(key) {
   renderSite(m, prev);
   renderSeo(m, prev);
   renderMaps(m, prev);
+  renderSearchTerms(m, prev);
   renderSocial(m, prev);
   renderFunnel(m);
   const hlWrap = document.getElementById('highlights-section');
