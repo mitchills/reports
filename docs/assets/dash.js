@@ -354,12 +354,12 @@ function renderSite(m, prev) {
 }
 
 /* Optional Website sub-blocks: where visitors are (ga4.locations) and which other
-   sites sent them (ga4.referrals). Each block only shows when the month carries
+   sites sent them (ga4.referrals, a rolling 6-month total ending that month). Each block only shows when the month carries
    that list AND the client's shell has the matching div, so every other client is
    untouched. Conversions are session-based, on the same basis as ga4.conversions. */
 function renderGeoReferrals(m, prev) {
   const g = m.ga4 || {}, p = (prev && prev.ga4) || {};
-  const block = (blockId, elId, rows, prevRows, keyName, label, fmtKey) => {
+  const block = (blockId, elId, rows, prevRows, keyName, label, fmtKey, noCmp) => {
     const blk = document.getElementById(blockId), el = document.getElementById(elId);
     if (!blk || !el) return;
     if (!rows || !rows.length) { blk.style.display = 'none'; return; }
@@ -367,17 +367,20 @@ function renderGeoReferrals(m, prev) {
     const prevBy = {};
     (prevRows || []).forEach(r => prevBy[r[keyName]] = r.sessions);
     el.innerHTML = `<table class="tbl"><thead><tr><th>${label}</th>` +
-      '<th class="r">Sessions</th><th class="r">Conversions</th><th class="r">vs last month</th></tr></thead><tbody>' +
+      '<th class="r">Sessions</th><th class="r">Conversions</th>' +
+      (noCmp ? '' : '<th class="r">vs last month</th>') + '</tr></thead><tbody>' +
       rows.map(r => {
         const d = delta(r.sessions, prevBy[r[keyName]], true);
         return `<tr><td${fmtKey ? ' class="page-path"' : ''}>${r[keyName]}</td>` +
           `<td class="r">${num(r.sessions)}</td>` +
           `<td class="r">${has(r.conversions) ? num(r.conversions) : '<span class="na">no data</span>'}</td>` +
-          `<td class="r"><span class="${d.cls}">${d.str}</span></td></tr>`;
+          (noCmp ? '' : `<td class="r"><span class="${d.cls}">${d.str}</span></td>`) + '</tr>';
       }).join('') + '</tbody></table>';
   };
   block('site-locations-block', 'site-locations', g.locations, p.locations, 'city', 'City', false);
-  block('site-referrals-block', 'site-referrals', g.referrals, p.referrals, 'source', 'Website', true);
+  /* referrals are a rolling 6-month total (low volume per month), so a
+     month-on-month column would compare overlapping windows — leave it off */
+  block('site-referrals-block', 'site-referrals', g.referrals, null, 'source', 'Website', true, true);
 }
 
 /* ─── 3. SEO ─── */
