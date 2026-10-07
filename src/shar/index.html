@@ -10,7 +10,7 @@
   <!-- ?v= is a cache-buster. dash.css/dash.js are shared across every client, so a
        browser holding an old copy shows a stale design. Bump v on both links after
        any change to the shared assets, then re-run `make encrypt`. -->
-  <link rel="stylesheet" href="../assets/dash.css?v=8">
+  <link rel="stylesheet" href="../assets/dash.css?v=9">
 </head>
 <body>
 <div class="wrap">
@@ -46,6 +46,13 @@
   <div class="section-label">Paid Advertising</div>
   <div class="panel"><div id="paid"></div></div>
 
+  <!-- Per-service breakdown. renderServices hides this whole block unless the
+       month carries a "services" object, so a client without one sees nothing. -->
+  <div id="services-section">
+    <div class="section-label">By Service</div>
+    <div class="panel"><div id="services"></div></div>
+  </div>
+
   <div id="seo-section">
     <div class="section-label">SEO</div>
     <div class="panel"><div id="organic"></div></div>
@@ -71,6 +78,18 @@
     <div class="panel"><div id="site-pages"></div></div>
   </div>
 
+  <!-- Optional: renderGeoReferrals hides each block unless the month carries
+       ga4.locations / ga4.referrals. -->
+  <div id="site-locations-block">
+    <div class="sub-label">Where Visitors Are</div>
+    <div class="panel"><div id="site-locations"></div></div>
+  </div>
+
+  <div id="site-referrals-block">
+    <div class="sub-label">Referral Traffic</div>
+    <div class="panel"><div id="site-referrals"></div></div>
+  </div>
+
   <div id="rankings-section">
     <div class="section-label">Keyword Rankings</div>
     <div class="panel"><div id="rankings"></div></div>
@@ -84,6 +103,6 @@
   <p class="foot" id="foot"></p>
 
 </div>
-<script src="../assets/dash.js?v=8"></script>
+<script src="../assets/dash.js?v=19"></script>
 </body>
 </html>
