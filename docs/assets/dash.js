@@ -273,6 +273,118 @@ function servicesTable(m, prev) {
     <tbody>${rows}</tbody></table>`;
 }
 
+/* ─── 1c. AD SPEND BREAKDOWN — optional (DATA month key `spend_breakdown`). Sits directly
+   under the Paid Advertising panel: where the month's budget went, per platform and per
+   campaign, each platform behind its own dropdown so it costs two rows until opened.
+   For a client whose account mixes campaigns we manage with ones we don't (Google
+   `groups`), so they can reconcile the card charge without reading it as our result.
+   Absent = renders nothing, so only the months that carry the key ever show it.
+   The section and its styles are created here rather than in the page shell + dash.css:
+   every client's shell is identical, and this way the feature ships in one file. ─── */
+function renderSpendBreakdown(m) {
+  const paid = document.getElementById('paid');
+  const anchor = paid && paid.closest('.panel');
+  if (!anchor) return;
+  let wrap = document.getElementById('spend-breakdown-section');
+  const sb = m.spend_breakdown;
+  if (!sb || (!sb.google && !sb.meta)) { if (wrap) wrap.style.display = 'none'; return; }
+
+  if (!wrap) {
+    const css = document.createElement('style');
+    css.textContent = `
+      .sb-drop-panel { margin-top:12px; }
+      .sb-drop { display:flex; align-items:center; gap:14px; padding:16px 24px; cursor:pointer; list-style:none; }
+      .sb-drop::-webkit-details-marker { display:none; }
+      .sb-drop:hover { background:var(--hover); }
+      .sb-drop:focus-visible { outline:2px solid var(--gold); outline-offset:-2px; }
+      .sb-name { font-size:15px; font-weight:600; flex:1; min-width:0; }
+      .sb-name span, .sb-total span { display:block; font-size:12.5px; font-weight:400; color:var(--muted); }
+      .sb-total { font-size:17px; font-weight:600; font-variant-numeric:tabular-nums; text-align:right; }
+      .sb-chev { width:10px; height:10px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted);
+                 transform:rotate(45deg); transition:transform .2s ease; flex:none; margin:0 4px 4px 2px; }
+      details[open] > .sb-drop .sb-chev { transform:rotate(-135deg); margin-bottom:-4px; }
+      details[open] > .sb-drop { border-bottom:1px solid var(--line); }
+      .sb-scroll { overflow-x:auto; }
+      .sb-tbl { table-layout:auto; min-width:520px; }
+      .sb-tbl th.r, .sb-tbl td.r { width:auto; white-space:nowrap; }
+      .sb-tbl .sb-group td { background:var(--hover); font-size:11px; font-weight:600; text-transform:uppercase;
+                             letter-spacing:.05em; color:var(--muted); padding-top:9px; padding-bottom:9px; }
+      .sb-tbl .sb-sub td { font-weight:600; }
+      .sb-tbl .sb-grand td { font-weight:600; font-size:15px; border-top:2px solid var(--ink); }
+      .sb-lead { color:var(--muted); font-size:14px; margin:-4px 0 14px; }
+      @media (prefers-reduced-motion:reduce) { .sb-chev { transition:none; } }`;
+    document.head.appendChild(css);
+    wrap = document.createElement('div');
+    wrap.id = 'spend-breakdown-section';
+    anchor.insertAdjacentElement('afterend', wrap);
+  }
+  wrap.style.display = '';
+
+  const sum  = (arr, k) => arr.reduce((t, r) => t + (r[k] || 0), 0);
+  /* cents AND thousands separators — the global aud2 has no separators, which is fine
+     for a $33.49 cost per conversion but reads badly on a $1,535.47 spend line */
+  const aud2 = n => '$' + n.toLocaleString('en-AU', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  const dec1 = n => n.toFixed(1);
+  const per  = (spend, n) => n > 0 ? aud2(spend / n) : '—';
+  const row  = (cls, label, spend, n, fmtN) => `<tr${cls ? ` class="${cls}"` : ''}>
+      <td${cls ? '' : ' class="kw"'}>${label}</td><td class="r">${aud2(spend)}</td>
+      <td class="r">${fmtN(n)}</td><td class="r">${per(spend, n)}</td></tr>`;
+  const drop = (name, sub, total, totalSub, head, body, note) => `<details class="panel sb-drop-panel">
+      <summary class="sb-drop">
+        <div class="sb-name">${name}<span>${sub}</span></div>
+        <div class="sb-total">${aud2(total)}<span>${totalSub}</span></div>
+        <i class="sb-chev" aria-hidden="true"></i>
+      </summary>
+      <div class="sb-scroll"><table class="tbl sb-tbl">
+        <thead><tr><th>Campaign</th><th class="r">Spend</th><th class="r">${head[0]}</th><th class="r">${head[1]}</th></tr></thead>
+        <tbody>${body}</tbody></table></div>
+      ${note ? `<div class="table-note">${note}</div>` : ''}
+    </details>`;
+  const count = n => n + (n === 1 ? ' campaign' : ' campaigns');
+
+  let gSpend = null, mSpend = null, gHTML = '', mHTML = '';
+
+  if (sb.google) {
+    const groups = sb.google.groups || [];
+    const all = groups.reduce((a, g) => a.concat(g.campaigns || []), []);
+    const gConv = sum(all, 'conversions');
+    gSpend = sum(all, 'spend');
+    const body = groups.map(g => {
+      const c = g.campaigns || [];
+      return `<tr class="sb-group"><td colspan="4">${g.label}</td></tr>` +
+        c.map(r => row('', r.name, r.spend, r.conversions, dec1)).join('') +
+        row('sb-sub', g.subtotal_label || 'Subtotal', sum(c, 'spend'), sum(c, 'conversions'), dec1);
+    }).join('') + row('sb-grand', 'Google Ads total', gSpend, gConv, dec1);
+    gHTML = drop('Google Ads', count(all.length), gSpend, dec1(gConv) + ' conversions',
+                 ['Conversions', 'Cost per conversion'], body, sb.google.note);
+  }
+
+  if (sb.meta) {
+    const c = sb.meta.campaigns || [];
+    const res = sum(c, 'results');
+    const rl = sb.meta.result_label || 'Results';
+    mSpend = sum(c, 'spend');
+    const body = c.map(r => row('', r.name, r.spend, r.results, num)).join('') +
+                 row('sb-grand', 'Meta Ads total', mSpend, res, num);
+    mHTML = drop('Meta Ads', 'Facebook + Instagram, ' + count(c.length), mSpend,
+                 num(res) + ' ' + rl.toLowerCase(), [rl, sb.meta.cost_label || 'Cost per result'],
+                 body, sb.meta.note);
+  }
+
+  const card = (label, v, sub) => `<div class="card">
+      <div class="card-label">${label}</div>
+      <div class="card-value">${aud2(v)}</div>
+      <div class="card-delta delta-flat">${sub}</div></div>`;
+  wrap.innerHTML = '<div class="section-label">Ad Spend Breakdown</div>' +
+    (sb.intro ? `<p class="sb-lead">${sb.intro}</p>` : '') +
+    '<div class="panel"><div class="card-row">' +
+      card('Total ad spend', (gSpend || 0) + (mSpend || 0),
+           has(gSpend) && has(mSpend) ? 'Google + Meta' : has(gSpend) ? 'Google' : 'Meta') +
+      (has(gSpend) ? card('Google Ads', gSpend, count(sb.google.groups.reduce((n, g) => n + (g.campaigns || []).length, 0))) : '') +
+      (has(mSpend) ? card('Meta Ads', mSpend, count((sb.meta.campaigns || []).length)) : '') +
+    '</div></div>' + gHTML + mHTML;
+}
+
 /* ─── 2. WEBSITE (GA4) — three separate panels so traffic, conversions and pages
    don't read as one undifferentiated block ─── */
 function renderSite(m, prev) {
@@ -1006,6 +1118,7 @@ function setMonth(key) {
   renderSummary(m);
   renderBusiness(m, prev);
   renderPaid(m, prev);
+  renderSpendBreakdown(m);
   renderServices(m, prev);
   renderSite(m, prev);
   renderSeo(m, prev);
