@@ -871,7 +871,10 @@ function mapsBlockHTML(g, p, withCoverage) {
       out += '<div class="notes"><ul>' + rows.map(c => {
         const now = Math.round(pct(c) * 100);
         const was = prevC[c.keyword];
-        const move = has(was) ? ` (up from ${Math.round(was * 100)}%)` : '';
+        /* only name the prior figure when it genuinely went up — a hold or a dip
+           was rendering as "(up from 98%)" next to 89% */
+        const prior = has(was) ? Math.round(was * 100) : null;
+        const move = (prior !== null && now > prior) ? ` (up from ${prior}%)` : '';
         return `<li>Showing in the top 3 on Google Maps across <strong>${now}%</strong>
                 of your local area for &ldquo;${c.keyword}&rdquo;${move}</li>`;
       }).join('') + '</ul></div>';
