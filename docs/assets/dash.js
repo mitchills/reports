@@ -1109,7 +1109,17 @@ function renderPlan(m) {
 function setMonth(key) {
   const idx  = DATA.months.findIndex(m => m.key === key);
   const m    = DATA.months[idx];
-  const prev = idx > 0 ? DATA.months[idx - 1] : null;
+  const stored = idx > 0 ? DATA.months[idx - 1] : null;
+  /* compare_baseline: when the stored prior month used a different date window,
+     a month can carry the prior month's figures on a matching window. Only the
+     blocks/fields it gives are swapped in; the prior month itself is untouched. */
+  let prev = stored;
+  if (stored && m.compare_baseline) {
+    prev = Object.assign({}, stored);
+    Object.keys(m.compare_baseline).forEach(function (b) {
+      prev[b] = Object.assign({}, stored[b] || {}, m.compare_baseline[b]);
+    });
+  }
 
   document.querySelectorAll('.toggle button').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById('btn-' + key);
