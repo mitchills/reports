@@ -573,14 +573,19 @@ function renderSeo(m, prev) {
      movement compares against that keyword's Search Console average the month
      before (gsc_prev_position on the row, else the prior month's gsc_position).
      The tracker fills in only where Search Console has nothing. */
-  const gscPrimary = !!(DATA && DATA.rankings_gsc_primary);
+  /* true = every row; an array of location names = only those locations (e.g. keep
+     the tracker for a suburb postcode where the searcher's spot matters). */
+  const gscPrimaryCfg = DATA && DATA.rankings_gsc_primary;
+  const gscPrimary = !!gscPrimaryCfg;
+  const usesGsc = r => Array.isArray(gscPrimaryCfg)
+    ? gscPrimaryCfg.indexOf(r.location) !== -1 : gscPrimary;
   const prevGsc = {};
   ((prev && prev.rankings) || []).forEach(r => {
     if (has(r.gsc_position) && (r.gsc_impressions || 0) >= 10)
       prevGsc[r.keyword + '|' + (r.location || '')] = r.gsc_position;
   });
   const tracked = (m.rankings || []).map(r => {
-    if (!gscPrimary || !has(r.gsc_position) || (r.gsc_impressions || 0) < 10) return r;
+    if (!usesGsc(r) || !has(r.gsc_position) || (r.gsc_impressions || 0) < 10) return r;
     const pos = Math.max(1, Math.round(r.gsc_position));
     const was = has(r.gsc_prev_position) ? r.gsc_prev_position
               : prevGsc[r.keyword + '|' + (r.location || '')];
@@ -717,7 +722,8 @@ function renderSeo(m, prev) {
     note = (DATA && DATA.rankings_hide_note) ? '' : `<strong>${rows.length}</strong> ${scope}. ` +
            `<strong>${placed.length}</strong> currently hold a position in Google's top 100.` +
            (gscPrimary ? ` Positions tagged <span class="tag tag-avg">avg</span> are Google's own average
-                from Search Console across every search you appeared in this month.` :
+                from Search Console across every search you appeared in this month` +
+                (Array.isArray(gscPrimaryCfg) ? ` (${gscPrimaryCfg.join(', ')}); other locations show our local rank check.` : '.') :
             gscFallback && placed.length > ranked.length
              ? ` Positions tagged <span class="tag tag-avg">avg</span> come from Search Console —
                 Google's own average across the searches you appeared in.` : '');
