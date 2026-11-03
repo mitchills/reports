@@ -566,7 +566,27 @@ function renderSeo(m, prev) {
      would smuggle decliners onto the page through the back door, which is the
      one thing this rule exists to prevent. */
   const kwEl   = document.getElementById('rankings');
-  const tracked = m.rankings || [];
+  /* PER-CLIENT OPT-IN (DATA.rankings_gsc_primary). The rank tracker does one robot
+     search from one fixed postcode on one day; Search Console averages every real
+     search the site appeared in across the month. Where Google has enough data
+     (>= 10 impressions) its average becomes the Position, tagged `avg`, and the
+     movement compares against that keyword's Search Console average the month
+     before (gsc_prev_position on the row, else the prior month's gsc_position).
+     The tracker fills in only where Search Console has nothing. */
+  const gscPrimary = !!(DATA && DATA.rankings_gsc_primary);
+  const prevGsc = {};
+  ((prev && prev.rankings) || []).forEach(r => {
+    if (has(r.gsc_position) && (r.gsc_impressions || 0) >= 10)
+      prevGsc[r.keyword + '|' + (r.location || '')] = r.gsc_position;
+  });
+  const tracked = (m.rankings || []).map(r => {
+    if (!gscPrimary || !has(r.gsc_position) || (r.gsc_impressions || 0) < 10) return r;
+    const pos = Math.max(1, Math.round(r.gsc_position));
+    const was = has(r.gsc_prev_position) ? r.gsc_prev_position
+              : prevGsc[r.keyword + '|' + (r.location || '')];
+    return Object.assign({}, r, { position: pos, _avg: true, is_new: false,
+      movement: has(was) ? Math.round(was) - pos : null });
+  });
   const all     = tracked.filter(r => has(r.position) && r.position > 0);
 
   /* PER-CLIENT OPT-IN (DATA.rankings_show_all, set in that client's data.json).
@@ -696,7 +716,9 @@ function renderSeo(m, prev) {
        N hold a position" footer. Absent or false keeps it for every other client. */
     note = (DATA && DATA.rankings_hide_note) ? '' : `<strong>${rows.length}</strong> ${scope}. ` +
            `<strong>${placed.length}</strong> currently hold a position in Google's top 100.` +
-           (gscFallback && placed.length > ranked.length
+           (gscPrimary ? ` Positions tagged <span class="tag tag-avg">avg</span> are Google's own average
+                from Search Console across every search you appeared in this month.` :
+            gscFallback && placed.length > ranked.length
              ? ` Positions tagged <span class="tag tag-avg">avg</span> come from Search Console —
                 Google's own average across the searches you appeared in.` : '');
   } else {
@@ -733,7 +755,7 @@ function renderSeo(m, prev) {
         KW_LOC === KW_ALL && r.location && multiLoc.has(r.keyword)
           ? ` <span class="tag tag-loc">${r.location}</span>` : ''
       }${jumped ? ' <span class="tag tag-good">big jump</span>' : ''}</td>
-      <td class="r pos">${isRanked ? '#' + r.position
+      <td class="r pos">${isRanked ? '#' + r.position + (r._avg ? ' <span class="tag tag-avg">avg</span>' : '')
         : (gscPos(r) ? `#${gscPos(r)} <span class="tag tag-avg">avg</span>`
                      : '<span class="kw-unranked">Not in top 100</span>')}</td>
       <td class="r">${mv}</td>${showGsc ? `
