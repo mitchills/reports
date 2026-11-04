@@ -566,7 +566,32 @@ function renderSeo(m, prev) {
      would smuggle decliners onto the page through the back door, which is the
      one thing this rule exists to prevent. */
   const kwEl   = document.getElementById('rankings');
-  const tracked = m.rankings || [];
+  /* PER-CLIENT OPT-IN (DATA.rankings_gsc_primary). The rank tracker does one robot
+     search from one fixed postcode on one day; Search Console averages every real
+     search the site appeared in across the month. Where Google has enough data
+     (>= 10 impressions) its average becomes the Position, tagged `avg`, and the
+     movement compares against that keyword's Search Console average the month
+     before (gsc_prev_position on the row, else the prior month's gsc_position).
+     The tracker fills in only where Search Console has nothing. */
+  /* true = every row; an array of location names = only those locations (e.g. keep
+     the tracker for a suburb postcode where the searcher's spot matters). */
+  const gscPrimaryCfg = DATA && DATA.rankings_gsc_primary;
+  const gscPrimary = !!gscPrimaryCfg;
+  const usesGsc = r => Array.isArray(gscPrimaryCfg)
+    ? gscPrimaryCfg.indexOf(r.location) !== -1 : gscPrimary;
+  const prevGsc = {};
+  ((prev && prev.rankings) || []).forEach(r => {
+    if (has(r.gsc_position) && (r.gsc_impressions || 0) >= 10)
+      prevGsc[r.keyword + '|' + (r.location || '')] = r.gsc_position;
+  });
+  const tracked = (m.rankings || []).map(r => {
+    if (!usesGsc(r) || !has(r.gsc_position) || (r.gsc_impressions || 0) < 10) return r;
+    const pos = Math.max(1, Math.round(r.gsc_position));
+    const was = has(r.gsc_prev_position) ? r.gsc_prev_position
+              : prevGsc[r.keyword + '|' + (r.location || '')];
+    return Object.assign({}, r, { position: pos, _avg: true, is_new: false,
+      movement: has(was) ? Math.round(was) - pos : null });
+  });
   const all     = tracked.filter(r => has(r.position) && r.position > 0);
 
   /* PER-CLIENT OPT-IN (DATA.rankings_show_all, set in that client's data.json).
@@ -696,7 +721,10 @@ function renderSeo(m, prev) {
        N hold a position" footer. Absent or false keeps it for every other client. */
     note = (DATA && DATA.rankings_hide_note) ? '' : `<strong>${rows.length}</strong> ${scope}. ` +
            `<strong>${placed.length}</strong> currently hold a position in Google's top 100.` +
-           (gscFallback && placed.length > ranked.length
+           (gscPrimary ? ` Positions tagged <span class="tag tag-avg">avg</span> are Google's own average
+                from Search Console across every search you appeared in this month` +
+                (Array.isArray(gscPrimaryCfg) ? ` (${gscPrimaryCfg.join(', ')}); other locations show our local rank check.` : '.') :
+            gscFallback && placed.length > ranked.length
              ? ` Positions tagged <span class="tag tag-avg">avg</span> come from Search Console —
                 Google's own average across the searches you appeared in.` : '');
   } else {
@@ -733,7 +761,7 @@ function renderSeo(m, prev) {
         KW_LOC === KW_ALL && r.location && multiLoc.has(r.keyword)
           ? ` <span class="tag tag-loc">${r.location}</span>` : ''
       }${jumped ? ' <span class="tag tag-good">big jump</span>' : ''}</td>
-      <td class="r pos">${isRanked ? '#' + r.position
+      <td class="r pos">${isRanked ? '#' + r.position + (r._avg ? ' <span class="tag tag-avg">avg</span>' : '')
         : (gscPos(r) ? `#${gscPos(r)} <span class="tag tag-avg">avg</span>`
                      : '<span class="kw-unranked">Not in top 100</span>')}</td>
       <td class="r">${mv}</td>${showGsc ? `
@@ -871,7 +899,10 @@ function mapsBlockHTML(g, p, withCoverage) {
       out += '<div class="notes"><ul>' + rows.map(c => {
         const now = Math.round(pct(c) * 100);
         const was = prevC[c.keyword];
-        const move = has(was) ? ` (up from ${Math.round(was * 100)}%)` : '';
+        /* only name the prior figure when it genuinely went up — a hold or a dip
+           was rendering as "(up from 98%)" next to 89% */
+        const prior = has(was) ? Math.round(was * 100) : null;
+        const move = (prior !== null && now > prior) ? ` (up from ${prior}%)` : '';
         return `<li>Showing in the top 3 on Google Maps across <strong>${now}%</strong>
                 of your local area for &ldquo;${c.keyword}&rdquo;${move}</li>`;
       }).join('') + '</ul></div>';
@@ -1109,7 +1140,17 @@ function renderPlan(m) {
 function setMonth(key) {
   const idx  = DATA.months.findIndex(m => m.key === key);
   const m    = DATA.months[idx];
-  const prev = idx > 0 ? DATA.months[idx - 1] : null;
+  const stored = idx > 0 ? DATA.months[idx - 1] : null;
+  /* compare_baseline: when the stored prior month used a different date window,
+     a month can carry the prior month's figures on a matching window. Only the
+     blocks/fields it gives are swapped in; the prior month itself is untouched. */
+  let prev = stored;
+  if (stored && m.compare_baseline) {
+    prev = Object.assign({}, stored);
+    Object.keys(m.compare_baseline).forEach(function (b) {
+      prev[b] = Object.assign({}, stored[b] || {}, m.compare_baseline[b]);
+    });
+  }
 
   document.querySelectorAll('.toggle button').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById('btn-' + key);
