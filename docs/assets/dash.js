@@ -385,6 +385,81 @@ function renderSpendBreakdown(m) {
     '</div></div>' + gHTML + mHTML;
 }
 
+/* ─── 1c. ENQUIRY LOG — optional, per month `enquiry_log`:
+   { calls: [{date:"YYYY-MM-DD", time:"HH:MM" (24h, clinic time), duration_s:int|null,
+              counted:bool, via:"Call button on ad"}],
+     leads: [{date:"YYYY-MM-DD", time_window:"7am to 8am", type:"Online booking"}],
+     timezone_label:"Pacific", call_rule:"…", leads_note:"…", note:"…" }
+   Absent = renders nothing, so no other client changes. Built here (not in the shell)
+   for the same reason as the spend breakdown: the feature ships in one file. ─── */
+function renderEnquiryLog(m) {
+  const paid = document.getElementById('paid');
+  const anchor = paid && paid.closest('.panel');
+  if (!anchor) return;
+  let wrap = document.getElementById('enquiry-log-section');
+  const log = m.enquiry_log;
+  if (!log || (!(log.calls || []).length && !(log.leads || []).length)) {
+    if (wrap) wrap.style.display = 'none'; return;
+  }
+  if (!wrap) {
+    const css = document.createElement('style');
+    css.textContent = `
+      .el-panel { margin-top:12px; }
+      .el-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline;
+                 gap:4px 16px; padding:18px 24px 6px; }
+      .el-head h3 { margin:0; font-size:15px; font-weight:600; }
+      .el-head span { font-size:12.5px; color:var(--muted); }
+      .el-scroll { overflow-x:auto; }
+      .el-tbl { table-layout:auto; min-width:560px; }
+      .el-tbl td, .el-tbl th { white-space:nowrap; }
+      .el-tbl td.d { font-weight:500; }
+      .el-tbl td.m { color:var(--muted); }
+      .el-badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:12.5px; font-weight:600; }
+      .el-yes { background:var(--good); color:#fff; }
+      .el-no  { background:var(--hover); color:var(--muted); border:1px solid var(--line); }
+      .el-type { background:#E6F2EC; color:#145C3B; }`;
+    document.head.appendChild(css);
+    wrap = document.createElement('div');
+    wrap.id = 'enquiry-log-section';
+    const sb = document.getElementById('spend-breakdown-section');
+    (sb || anchor).insertAdjacentElement('afterend', wrap);
+  }
+  wrap.style.display = '';
+
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const day = iso => {
+    const [y, mo, d] = iso.split('-').map(Number);
+    return DAYS[new Date(y, mo - 1, d).getDay()] + ' ' + String(d).padStart(2, '0') + '/' + String(mo).padStart(2, '0');
+  };
+  const t12 = hm => {
+    let [h, mi] = hm.split(':').map(Number);
+    const ap = h >= 12 ? 'pm' : 'am'; h = h % 12 || 12;
+    return h + ':' + String(mi).padStart(2, '0') + ap;
+  };
+  const dur = s => has(s) ? Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') : 'Not recorded';
+  const tz = log.timezone_label ? ' (' + log.timezone_label + ')' : '';
+  const calls = log.calls || [], leads = log.leads || [];
+
+  const callsHTML = calls.length ? `<div class="panel el-panel">
+      <div class="el-head"><h3>Calls from your ads</h3>${log.call_rule ? `<span>${log.call_rule}</span>` : ''}</div>
+      <div class="el-scroll"><table class="tbl el-tbl">
+        <thead><tr><th>Date</th><th>Time${tz}</th><th>Duration</th><th>Counted</th><th>How they called</th></tr></thead>
+        <tbody>${calls.map(c => `<tr><td class="d">${day(c.date)}</td><td>${t12(c.time)}</td>
+          <td style="font-variant-numeric:tabular-nums">${dur(c.duration_s)}</td>
+          <td><span class="el-badge ${c.counted ? 'el-yes' : 'el-no'}">${c.counted ? 'Enquiry' : 'Under 60s'}</span></td>
+          <td class="m">${c.via || ''}</td></tr>`).join('')}</tbody></table></div></div>` : '';
+
+  const leadsHTML = leads.length ? `<div class="panel el-panel">
+      <div class="el-head"><h3>Online bookings and form enquiries</h3>${log.leads_note ? `<span>${log.leads_note}</span>` : ''}</div>
+      <div class="el-scroll"><table class="tbl el-tbl">
+        <thead><tr><th>Date</th><th>Time${tz}</th><th>Type</th></tr></thead>
+        <tbody>${leads.map(l => `<tr><td class="d">${day(l.date)}</td><td>${l.time_window || ''}</td>
+          <td><span class="el-badge el-type">${l.type}</span></td></tr>`).join('')}</tbody></table></div></div>` : '';
+
+  wrap.innerHTML = '<div class="section-label">Enquiry Log</div>' + callsHTML + leadsHTML +
+    (log.note ? `<div class="table-note" style="padding-left:4px">${log.note}</div>` : '');
+}
+
 /* ─── 2. WEBSITE (GA4) — three separate panels so traffic, conversions and pages
    don't read as one undifferentiated block ─── */
 function renderSite(m, prev) {
@@ -1160,6 +1235,7 @@ function setMonth(key) {
   renderBusiness(m, prev);
   renderPaid(m, prev);
   renderSpendBreakdown(m);
+  renderEnquiryLog(m);
   renderServices(m, prev);
   renderSite(m, prev);
   renderSeo(m, prev);
@@ -1212,6 +1288,25 @@ async function init() {
       });
     }
 
+    /* `website: false` (no GA4 access for this client): hide the whole Website
+       section instead of showing an empty "no analytics" panel every month. */
+    if (DATA.website === false) {
+      const tp = document.getElementById('site-traffic');
+      const panel = tp && tp.closest('.panel');
+      if (panel) {
+        const sub = panel.previousElementSibling;
+        const lbl = sub && sub.previousElementSibling;
+        [panel, sub, lbl].forEach(el => {
+          if (el && (el === panel || el.classList.contains('sub-label') || el.classList.contains('section-label')))
+            el.style.display = 'none';
+        });
+      }
+      ['site-conv-block', 'site-pages-block'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+    }
+
     /* newest month first (far left) — months[] stays chronological so deltas
        keep comparing against the preceding month */
     document.getElementById('month-toggle').innerHTML =
@@ -1226,7 +1321,7 @@ async function init() {
        so a client without a tracked profile isn't told we used a source we didn't. */
     const hasMaps = DATA.months.some(m => m.maps);
     const sources = (DATA.seo === false
-      ? 'Google Ads, Meta Ads & GA4'
+      ? (DATA.website === false ? 'Google Ads & Meta Ads' : 'Google Ads, Meta Ads & GA4')
       : 'Google Ads, Meta Ads, GA4, Search Console & SE Ranking')
       + (hasMaps ? ' & Google Business Profile' : '');
     const stamp = (d && !isNaN(d)) ? ' · Updated ' +
